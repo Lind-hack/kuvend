@@ -8,7 +8,7 @@
     <meta name="description" content="Kuvend is a free, open-source workspace for Claude Code and Codex. Every change is a take you can undo, the other agent checks the work, and saving stops leaked keys." />
     <meta property="og:title" content="Kuvend: undo anything your AI agent does" />
     <meta property="og:description" content="Claude Code and Codex in your project, with every change on tape. Free and open source." />
-    <meta property="og:image" content="shots/workspace.webp" />
+    <meta property="og:image" content="https://kuvend.pages.dev/shots/workspace.webp" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="preload" href="fonts/barlow-semi-condensed-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="styles.css" />
@@ -45,7 +45,6 @@
 
       <section class="take" id="undo" aria-labelledby="t1">
         <div class="container">
-          <div class="counter" aria-hidden="true">01</div>
           <div class="split">
             <div class="copy">
               <h2 id="t1">Every message is a take. Drop the ones you don’t like.</h2>
@@ -70,11 +69,12 @@
 
       <section class="take" aria-labelledby="t2">
         <div class="container">
-          <div class="counter" aria-hidden="true">02</div>
-          <div class="split">
+          <div class="wide">
             <div class="copy">
-              <h2 id="t2">Claude writes it. Codex checks it.</h2>
-              <p class="lede">One tap sends a take to the other agent for a second listen. It reads the change and your project, can’t edit a thing, and reports real problems in plain words.</p>
+              <div>
+                <h2 id="t2">Claude writes it. Codex checks it.</h2>
+                <p class="lede">One tap sends a take to the other agent for a second listen. It reads the change, can’t edit a thing, and reports real problems in plain words.</p>
+              </div>
               <ul class="facts">
                 <li><strong>Different model, different blind spots.</strong> Each catches what the other is sure of.</li>
                 <li><strong>Read-only by design.</strong> The reviewer runs in Plan mode.</li>
@@ -89,11 +89,10 @@
 
       <section class="take" aria-labelledby="t3">
         <div class="container">
-          <div class="counter" aria-hidden="true">03</div>
           <div class="split">
             <div class="copy">
               <h2 id="t3">Run it. When it breaks, hand over the error.</h2>
-              <p class="lede">Kuvend finds how your project starts, installs what it needs and shows the output. Errors light up, and one tap sends them to the agent as the next message.</p>
+              <p class="lede">Kuvend finds how your project starts and shows the output. Errors light up, and one tap sends them to the agent.</p>
             </div>
             <figure class="shot tall">
               <img src="shots/run.webp" width="864" height="1800" loading="lazy" alt="Kuvend’s Run panel: a Node error, Cannot find module, highlighted, with a Send this error to the agent button." />
@@ -104,7 +103,6 @@
 
       <section class="take" id="save" aria-labelledby="t4">
         <div class="container">
-          <div class="counter" aria-hidden="true">04</div>
           <div class="split">
             <div class="copy">
               <h2 id="t4">Nothing leaves without a check.</h2>
@@ -124,29 +122,38 @@
 
       <section class="take" aria-labelledby="t5">
         <div class="container">
-          <div class="counter" aria-hidden="true">05</div>
           <div>
             <h2 id="t5">Three positions. You choose what it may touch.</h2>
-            <div class="switch" role="radiogroup" aria-label="Modes">
-              <button type="button" role="radio" aria-checked="false" data-mode="plan">Plan</button>
-              <button type="button" role="radio" aria-checked="true" data-mode="edit">Edit</button>
-              <button type="button" role="radio" aria-checked="false" data-mode="full">Full</button>
+            <div class="modes" role="list">
+              <div role="listitem" class="mode">
+                <h3><span class="pos">Plan</span></h3>
+                <p>Reads your project and plans. Changes nothing.</p>
+                <ul><li class="yes">Reads files</li><li class="no">Edits files</li><li class="no">Runs commands</li></ul>
+              </div>
+              <div role="listitem" class="mode is-default">
+                <h3><span class="pos">Edit</span> the default</h3>
+                <p>Edits files, and stops before a command. You see what it wanted, and can allow it.</p>
+                <ul><li class="yes">Reads files</li><li class="yes">Edits files</li><li class="ask">Asks before commands</li></ul>
+              </div>
+              <div role="listitem" class="mode is-full">
+                <h3><span class="pos">Full</span></h3>
+                <p>Does everything. For tasks you trust, best on a safe copy.</p>
+                <ul><li class="yes">Reads files</li><li class="yes">Edits files</li><li class="yes">Runs commands</li></ul>
+              </div>
             </div>
-            <p class="mode-text" id="mode-text" aria-live="polite">Edit changes files and asks before running commands. When it was stopped, you see what it wanted and can allow it.</p>
           </div>
         </div>
       </section>
 
       <section class="take" aria-labelledby="t6">
         <div class="container">
-          <div class="counter" aria-hidden="true">06</div>
           <div>
             <h2 id="t6">Your machine, your logins.</h2>
-            <ul class="facts">
+            <ul class="facts facts-grid">
               <li><strong>No account.</strong> Kuvend drives the claude and codex you already signed in to. It never sees your logins.</li>
               <li><strong>Local only.</strong> It listens on 127.0.0.1, and every request needs this install’s own key.</li>
               <li><strong>Other sites can’t reach it.</strong> Requests from other origins and other host names are refused.</li>
-              <li><strong>Open source.</strong> MIT licensed. Read every line on GitHub.</li>
+              <li><strong>Open source.</strong> MIT licensed, every line on GitHub.</li>
             </ul>
           </div>
         </div>
@@ -213,18 +220,6 @@
         undo.textContent = off ? "Redo" : "Undo this take";
         state.textContent = off ? "Undone. All three files are back as they were." : "Back again, byte for byte.";
       });
-      // The mode switch.
-      const text = {
-        plan: "Plan looks and plans. It changes nothing, so it's the safe way to ask how something works.",
-        edit: "Edit changes files and asks before running commands. When it was stopped, you see what it wanted and can allow it.",
-        full: "Full changes files and runs any command. For when you trust the task, ideally on a safe copy.",
-      };
-      for (const b of document.querySelectorAll("[data-mode]")) {
-        b.addEventListener("click", () => {
-          for (const x of document.querySelectorAll("[data-mode]")) x.setAttribute("aria-checked", String(x === b));
-          document.getElementById("mode-text").textContent = text[b.dataset.mode];
-        });
-      }
     </script>
   </body>
 </html>
