@@ -10,7 +10,8 @@
     <meta property="og:description" content="Claude Code and Codex in your project, with every change on tape. Free and open source." />
     <meta property="og:image" content="https://kuvend.pages.dev/shots/workspace.webp" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="preload" href="fonts/barlow-semi-condensed-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="fonts/geist-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <meta name="theme-color" content="#0b0c0e" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -28,6 +29,7 @@
 
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-bg" aria-hidden="true"></div>
         <div class="container">
           <div>
             <h1 id="hero-title">Undo anything your AI agent does.</h1>
@@ -81,7 +83,7 @@
               </ul>
             </div>
             <figure class="shot">
-              <img src="shots/take.webp" width="1510" height="1250" loading="lazy" alt="A take in Kuvend: Claude Code’s reply, the file it changed, and the Undo and Second listen from Codex buttons." />
+              <img src="shots/take.webp" width="1380" height="1270" loading="lazy" alt="A take in Kuvend: Claude Code’s reply, the file it changed, and the Undo and Second listen from Codex buttons." />
             </figure>
           </div>
         </div>
@@ -212,6 +214,14 @@
         });
       }
       // The sample take you can undo and redo.
+      // The hero's live backdrop, last and only where it's welcome: a wide screen, motion allowed,
+      // no data saver, WebGPU present. Everyone else keeps the still gradient underneath.
+      addEventListener("load", () => {
+        const ok = matchMedia("(min-width: 60rem) and (prefers-reduced-motion: no-preference)").matches && !navigator.connection?.saveData && "gpu" in navigator;
+        if (!ok) return;
+        const go = () => import("./js/hero.js").catch(() => {});
+        "requestIdleCallback" in window ? requestIdleCallback(go, { timeout: 2000 }) : setTimeout(go, 600);
+      });
       const demo = document.getElementById("demo");
       const undo = document.getElementById("undo-btn");
       const state = document.getElementById("demo-state");

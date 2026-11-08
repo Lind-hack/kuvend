@@ -1,24 +1,21 @@
-/* Hallmark · shape: the tape (each section is one take on a numbered lane) · genre: modern-minimal · theme: custom (inherits Kuvend's DESIGN.md) · job: try · idea: "the page is a session tape: every section is a take, and you can undo one" · vibe: "a recording desk, exact and quiet"
- * paper: oklch(18.6% 0.004 265) · accent: oklch(78.5% 0.145 70) · display: Barlow Semi Condensed · body: Barlow · hero: headline, sentence and the install command on the left, the real workspace bleeding off the right edge · nav: wordmark left, three plain links and the GitHub link right · footer: the install line again, then plain links · imagery: the product (three real captures) · signature: the take you can undo, built live in section two
- * axes: dark/grotesk-condensed/chromatic-amber · posture: restrained, one accent · contrast: pass · fold: pass · v2.0.0 */
+/* Hallmark · shape: the tape (each section is one take on a numbered lane) · genre: modern-minimal · theme: custom (inherits Kuvend's DESIGN.md v2) · job: try · idea: "the page is a session tape: every section is a take, and you can undo one" · vibe: "a graphite console, exact and quiet"
+ * paper: oklch(14.6% 0.004 265) · accent: oklch(79% 0.15 70) · display: Geist · body: Geist · hero: headline, sentence and the install command on the left, the real workspace bleeding off the right edge, over a slow mesh-gradient shader (a still gradient without WebGPU or with reduced motion) · nav: wordmark left, three plain links and the GitHub link right · footer: the install line again, then plain links · imagery: the product (three real captures) · signature: the take you can undo, built live in section two
+ * axes: dark/grotesk/chromatic-amber · posture: restrained, one accent · contrast: pass · fold: pass · v2.0.0 */
 /* Hallmark · pre-emit critique: P4 H4 E4 S4 R3 V4 · weakest: R (near the catalog's Console theme on axes), answered: the world is the product's own, locked in DESIGN.md, and the tape lane, tape labels and meter ramp come from the shipped app, not from the catalog */
-/* answered 47c: tape labels and meters are the product's real components, not ornament */
+/* answered 47c: channel chips and meters are the product's real components, not ornament */
 @import url("./tokens.css");
 @import url("./base.css");
 
-@font-face { font-family: "Barlow"; font-weight: 400; font-display: swap; src: url("./fonts/barlow-latin-400-normal.woff2") format("woff2"); }
-@font-face { font-family: "Barlow"; font-weight: 600; font-display: swap; src: url("./fonts/barlow-latin-600-normal.woff2") format("woff2"); }
-@font-face { font-family: "Barlow Semi Condensed"; font-weight: 500; font-display: swap; src: url("./fonts/barlow-semi-condensed-latin-500-normal.woff2") format("woff2"); }
-@font-face { font-family: "Barlow Semi Condensed"; font-weight: 600; font-display: swap; src: url("./fonts/barlow-semi-condensed-latin-600-normal.woff2") format("woff2"); }
-@font-face { font-family: "JetBrains Mono"; font-weight: 400; font-display: swap; src: url("./fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Geist"; font-weight: 100 900; font-display: swap; src: url("./fonts/geist-latin-wght-normal.woff2") format("woff2"); }
+@font-face { font-family: "Geist Mono"; font-weight: 100 900; font-display: swap; src: url("./fonts/geist-mono-latin-wght-normal.woff2") format("woff2"); }
 
-body { font-size: 17px; font-variant-numeric: tabular-nums; }
+body { font-size: 17px; font-variant-numeric: tabular-nums; letter-spacing: -0.008em; }
 h1, h2, h3 { font-weight: 600; letter-spacing: var(--tracking-display); color: var(--color-ink); }
 code, .mono { font-family: var(--font-outlier); }
 
 /* ---------- controls: one primary style, one quiet style ---------- */
-.btn { display: inline-flex; align-items: center; gap: var(--space-xs); min-height: 48px; padding: 0 var(--space-lg); border-radius: 6px; font-weight: 600; font-size: 16px; text-decoration: none; cursor: pointer; border: 1px solid transparent; transition: background-color var(--dur-micro) var(--ease-out), border-color var(--dur-micro) var(--ease-out), transform var(--dur-micro) var(--ease-out); }
-.btn:active { transform: translateY(1px); }
+.btn { display: inline-flex; align-items: center; gap: var(--space-xs); min-height: 48px; padding: 0 var(--space-lg); border-radius: 12px; font-weight: 550; font-size: 16px; text-decoration: none; cursor: pointer; border: 1px solid transparent; transition: background-color var(--dur-micro) var(--ease-out), border-color var(--dur-micro) var(--ease-out), transform var(--dur-micro) var(--ease-out); }
+.btn:active { transform: scale(0.97); }
 .btn-primary { background: var(--color-ink); color: var(--color-accent-ink); }
 .btn-primary:hover { background: var(--color-ink-hi); }
 .btn-quiet { background: transparent; color: var(--color-ink); border-color: var(--color-rule-hi); }
@@ -26,18 +23,18 @@ code, .mono { font-family: var(--font-outlier); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 /* The install line: the command you copy, with its copy control. */
-.cmd { display: inline-flex; align-items: stretch; border: 1px solid var(--color-rule-hi); border-radius: 6px; background: var(--color-paper-2); min-height: 48px; max-width: 100%; }
+.cmd { display: inline-flex; align-items: stretch; border: 1px solid var(--color-rule-hi); border-radius: 12px; background: var(--color-paper-2); min-height: 48px; max-width: 100%; }
 .cmd code { display: flex; align-items: center; gap: var(--space-xs); padding: 0 var(--space-md); font-size: 15px; color: var(--color-ink); white-space: nowrap; overflow-x: auto; }
 .cmd code::before { content: "$"; color: var(--color-muted); }
-.cmd button { border: 0; border-left: 1px solid var(--color-rule-hi); background: transparent; color: var(--color-ink-2); padding: 0 var(--space-md); font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 0 6px 6px 0; transition: background-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out); }
+.cmd button { border: 0; border-left: 1px solid var(--color-rule-hi); background: transparent; color: var(--color-ink-2); padding: 0 var(--space-md); font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 0 11px 11px 0; transition: background-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out); }
 .cmd button:hover { background: var(--color-paper-3); color: var(--color-ink); }
-.cmd button:active { transform: translateY(1px); }
+.cmd button:active { transform: scale(0.97); }
 .cmd button[data-done] { color: var(--color-go); }
 
 /* ---------- nav ---------- */
-.nav { position: sticky; top: 0; z-index: var(--z-sticky-nav); background: var(--color-paper); border-bottom: 1px solid var(--color-rule); }
+.nav { position: sticky; top: 0; z-index: var(--z-sticky-nav); background: color-mix(in oklab, var(--color-paper) 78%, transparent); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid var(--color-rule); }
 .nav .container { display: flex; align-items: center; gap: var(--space-lg); min-height: 60px; }
-.mark { display: inline-flex; align-items: center; gap: var(--space-xs); text-decoration: none; font-family: var(--font-display); font-weight: 600; font-size: 21px; }
+.mark { display: inline-flex; align-items: center; gap: var(--space-xs); text-decoration: none; font-family: var(--font-display); font-weight: 600; font-size: 19px; letter-spacing: -0.02em; }
 .bars { display: inline-flex; align-items: flex-end; gap: var(--space-3xs); height: 20px; }
 .bars i { display: block; width: 4px; border-radius: 1px; }
 .bars i:nth-child(1) { height: 8px; background: var(--color-go); }
@@ -49,16 +46,21 @@ code, .mono { font-family: var(--font-outlier); }
 @media (max-width: 40rem) { .nav ul li:not(:last-child) { display: none; } }
 
 /* ---------- hero: the headline on the left, the real workspace off the right edge ---------- */
-.hero { padding-block: var(--space-2xl) var(--space-3xl); overflow: clip; }
-.hero .container { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--space-2xl); align-items: center; }
-.hero h1 { font-size: var(--text-display); line-height: 0.98; max-width: 9ch; }
+.hero { position: relative; isolation: isolate; padding-block: var(--space-2xl) var(--space-3xl); overflow: clip; }
+/* The backdrop: a still gradient by default; the shader fades in over it once WebGPU is up. */
+.hero-bg { position: absolute; inset: 0; z-index: -1; background: radial-gradient(60% 70% at 78% 30%, var(--color-glow-warm), transparent 70%), radial-gradient(50% 60% at 18% 85%, var(--color-glow-cool), transparent 70%), var(--color-paper); }
+.hero-bg > div { position: absolute; inset: 0; opacity: 0; transition: opacity 1400ms var(--ease-out); }
+.hero-bg[data-live] > div { opacity: 0.9; }
+.hero-bg::after { content: ""; position: absolute; inset: auto 0 0 0; height: 40%; background: linear-gradient(to bottom, transparent, var(--color-paper)); }
+.hero .container { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: var(--space-2xl); align-items: center; }
+.hero h1 { font-size: var(--text-display); line-height: 1; max-width: 12ch; text-wrap: balance; overflow-wrap: break-word; min-width: 0; }
 .hero p { margin-top: var(--space-lg); font-size: var(--text-lead); color: var(--color-ink-2); max-width: 30ch; }
 .hero .actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-top: var(--space-xl); }
-.hero figure { margin: 0; margin-right: calc(var(--gutter) * -1 - 12vw); border: 1px solid var(--color-rule-hi); border-radius: 8px; overflow: hidden; }
+.hero figure { margin: 0; margin-right: calc(var(--gutter) * -1 - 12vw); border: 0; border-radius: 16px; overflow: hidden; box-shadow: 0 40px 80px -40px var(--color-shadow), 0 1px 0 var(--color-sheen) inset; }
 .hero figure img { width: 100%; }
 @media (max-width: 60rem) {
   .hero .container { grid-template-columns: minmax(0, 1fr); }
-  .hero figure { margin-right: calc(var(--gutter) * -1); border-radius: 8px 0 0 8px; }
+  .hero figure { margin-right: calc(var(--gutter) * -1); border-radius: 16px 0 0 16px; }
 }
 
 /* ---------- the tape: numbered takes down a lane ---------- */
@@ -72,18 +74,18 @@ code, .mono { font-family: var(--font-outlier); }
   .split { grid-template-columns: minmax(0, 1fr); gap: var(--space-xl); }
 }
 
-/* A scribble strip: masking tape with the agent's name on it, as in the app. */
-.scribble { display: inline-flex; align-items: center; gap: var(--space-xs); padding: var(--space-3xs) var(--space-xs); background: var(--color-tape); color: var(--color-tape-ink); font-family: var(--font-display); font-weight: 600; font-size: 14px; clip-path: polygon(0 8%, 3px 0, 100% 0, calc(100% - 2px) 22%, 100% 46%, calc(100% - 3px) 70%, 100% 100%, 2px 100%, 0 78%, 3px 52%, 0 30%); transform: rotate(-0.6deg); }
-.scribble i { width: 8px; height: 8px; border-radius: 1px; }
+/* The channel chip, as in the app: the agent's cap and its name. */
+.scribble { display: inline-flex; align-items: center; gap: var(--space-xs); height: 28px; padding: 0 var(--space-sm); background: var(--color-paper-3); color: var(--color-ink); font-weight: 550; font-size: 14px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--color-rule-hi); }
+.scribble i { width: 7px; height: 7px; border-radius: 50%; }
 .cap-claude { background: var(--color-claude); }
 .cap-codex { background: var(--color-codex); }
 
 /* ---------- the take you can undo (the signature) ---------- */
-.demo { border: 1px solid var(--color-rule-hi); border-radius: 8px; background: var(--color-paper-2); padding: var(--space-lg); }
-.demo-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs) var(--space-md); font-family: var(--font-display); font-size: 15px; color: var(--color-muted); }
+.demo { border: 1px solid var(--color-rule-hi); border-radius: var(--radius-card); background: var(--color-paper-2); padding: var(--space-lg); }
+.demo-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs) var(--space-md); font-size: 15px; color: var(--color-muted); }
 .demo-ask { margin-top: var(--space-md); font-size: 19px; font-weight: 600; line-height: 1.4; transition: color var(--dur-short) var(--ease-out); }
 .demo-files { margin: var(--space-lg) 0 0; padding: 0; list-style: none; border-top: 1px solid var(--color-rule); }
-.demo-files li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; border-bottom: 1px solid var(--color-rule); font-family: var(--font-outlier); font-size: 14px; transition: opacity var(--dur-short) var(--ease-out); }
+.demo-files li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; border-bottom: 1px solid var(--color-rule); font-family: var(--font-outlier); font-size: 14px; transition: opacity var(--dur-long) var(--ease-out), filter var(--dur-long) var(--ease-out); }
 .demo-files .kind { color: var(--color-muted); margin-right: var(--space-xs); }
 .meter { display: inline-flex; gap: var(--space-3xs); }
 .meter i { width: 4px; height: 10px; border-radius: 1px; background: var(--color-paper-3); }
@@ -94,10 +96,10 @@ code, .mono { font-family: var(--font-outlier); }
 .demo-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); margin-top: var(--space-lg); }
 .demo-state { font-size: 15px; color: var(--color-ink-2); }
 .demo[data-undone] .demo-ask { color: var(--color-muted); text-decoration: line-through; text-decoration-color: var(--color-muted); }
-.demo[data-undone] .demo-files li { opacity: 0.45; }
+.demo[data-undone] .demo-files li { opacity: 0.4; filter: grayscale(1); }
 
 /* ---------- pictures of the real app ---------- */
-.shot { margin: 0; border: 1px solid var(--color-rule-hi); border-radius: 8px; overflow: hidden; background: var(--color-paper-2); }
+.shot { margin: 0; border: 1px solid var(--color-rule-hi); border-radius: var(--radius-card); overflow: hidden; background: var(--color-paper-2); }
 .shot img { width: 100%; }
 .shot.tall { max-width: 400px; }
 .shot.tall.trim img { aspect-ratio: 864 / 1250; object-fit: cover; object-position: top; }
@@ -115,11 +117,11 @@ code, .mono { font-family: var(--font-outlier); }
 
 /* ---------- the three positions, side by side ---------- */
 .modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-columns); margin-top: var(--space-xl); }
-.mode { border-top: 2px solid var(--color-rule-hi); padding-top: var(--space-lg); }
-.mode.is-default { border-top-color: var(--color-ink); }
-.mode.is-full { border-top-color: var(--color-clip); }
+.mode { border-top: 1px solid var(--color-rule-hi); padding-top: var(--space-lg); }
+.mode.is-default { border-top: 2px solid var(--color-ink); }
+.mode.is-full { border-top: 2px solid var(--color-clip); }
 .mode h3 { font-family: var(--font-body); font-size: var(--text-title); color: var(--color-muted); font-weight: 400; }
-.mode .pos { font-family: var(--font-display); font-weight: 600; font-size: var(--text-2xl); color: var(--color-ink); margin-right: var(--space-xs); }
+.mode .pos { font-weight: 600; letter-spacing: var(--tracking-display); font-size: var(--text-2xl); color: var(--color-ink); margin-right: var(--space-xs); }
 .mode p { margin-top: var(--space-sm); color: var(--color-ink-2); }
 .mode ul { margin: var(--space-lg) 0 0; padding: 0; list-style: none; }
 .mode li { padding: var(--space-xs) 0; border-bottom: 1px solid var(--color-rule); display: flex; align-items: center; gap: var(--space-sm); }
@@ -147,3 +149,5 @@ footer a:hover { color: var(--color-ink); }
 footer .meaning { margin-left: auto; }
 
 a:focus-visible, button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) { .hero-bg > div { display: none; } .demo-files li, .btn, .cmd button, .hero-bg > div { transition: none; } }

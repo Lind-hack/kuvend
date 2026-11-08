@@ -113,13 +113,13 @@ function Run({ session, run, onFix, busy }: { session: Session; run: RunState; o
             </Button>
           )}
           {run.url && (
-            <a href={run.url} target="_blank" rel="noreferrer" className="inline-flex min-h-8 items-center gap-1.5 rounded-[5px] px-2 font-mono text-[12.5px] text-codex hover:underline">
+            <a href={run.url} target="_blank" rel="noreferrer" className="inline-flex min-h-8 items-center gap-1.5 rounded-[8px] px-2 font-mono text-[12.5px] text-codex hover:underline">
               {run.url.replace(/^https?:\/\//, "")} <ExternalLink className="h-3.5 w-3.5" aria-hidden />
             </a>
           )}
           <span className="ml-auto flex items-center gap-1.5 text-[12.5px] text-silk-3">
             <Led on={run.running} color={hasError ? "var(--color-clip)" : "var(--color-go)"} blink={run.installing} />
-            {run.installing ? "installing" : run.running ? "running" : run.exitCode !== null ? `stopped (${run.exitCode})` : "off"}
+            {run.installing ? "installing" : run.running ? "running" : run.exitCode !== null ? run.exitCode === 0 ? "stopped" : `crashed, exit code ${run.exitCode}` : "off"}
           </span>
         </div>
         {!run.running && (
@@ -128,7 +128,7 @@ function Run({ session, run, onFix, busy }: { session: Session; run: RunState; o
             onChange={(e) => setCustom(e.target.value)}
             placeholder={run.command ?? "Start command (leave empty to detect it)"}
             aria-label="Start command"
-            className="min-h-9 rounded-[4px] border border-rule bg-desk px-2.5 font-mono text-[12.5px] outline-none placeholder:text-silk-3 focus:border-silk-3"
+            className="min-h-9 rounded-[7px] border border-rule bg-desk px-2.5 font-mono text-[12.5px] outline-none placeholder:text-silk-3 focus:border-silk-3"
           />
         )}
         {error && <p className="text-[13px] text-clip">{error}</p>}
@@ -215,14 +215,14 @@ function Save({ session }: { session: Session }) {
         <p className="text-[14px]">There's nothing new to save.</p>
       ) : (
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2 rounded-[5px] border border-rule bg-desk px-3 py-2.5">
+          <div className="flex items-center gap-2 rounded-[8px] border border-rule bg-desk px-3 py-2.5">
             {/* The clip light: red when something must not be saved. */}
             <Led color={stops.length ? "var(--color-clip)" : check.warnings.length ? "var(--color-warn)" : "var(--color-go)"} label="Check result" />
             <span className="text-[14px] font-medium">{stops.length ? `${stops.length} thing${stops.length > 1 ? "s" : ""} to fix first` : check.warnings.length ? "Worth a look" : "Clean"}</span>
-            <span className="ml-auto font-mono text-[12px] text-silk-3">{check.files.length} files</span>
+            <span className="ml-auto font-mono text-[12px] text-silk-3">{check.files.length} {check.files.length === 1 ? "file" : "files"}</span>
           </div>
           {check.warnings.map((w, i) => (
-            <div key={i} className={cx("flex gap-2.5 rounded-[5px] border p-3", w.level === "stop" ? "border-clip/45 bg-clip/[0.07]" : "border-warn/40 bg-warn/[0.05]")}>
+            <div key={i} className={cx("flex gap-2.5 rounded-[8px] border p-3", w.level === "stop" ? "border-clip/45 bg-clip/[0.07]" : "border-warn/40 bg-warn/[0.05]")}>
               <ShieldAlert className={cx("mt-0.5 h-4 w-4 shrink-0", w.level === "stop" ? "text-clip" : "text-warn")} aria-hidden />
               <span className="text-[13.5px]">
                 <span className="font-medium">{w.title}</span>
@@ -238,7 +238,7 @@ function Save({ session }: { session: Session }) {
           )}
           <label className="flex flex-col gap-1.5">
             <span className="silk">What changed, in a sentence</span>
-            <input value={message} onChange={(e) => setMessage(e.target.value)} className="min-h-10 rounded-[5px] border border-rule bg-desk px-3 text-[14px] outline-none focus:border-silk-3" />
+            <input value={message} onChange={(e) => setMessage(e.target.value)} className="min-h-10 rounded-[8px] border border-rule bg-desk px-3 text-[14px] outline-none focus:border-silk-3" />
           </label>
           <div className="flex gap-2">
             <Button tone="quiet" onClick={() => void runCheck()}>
@@ -262,7 +262,7 @@ function Save({ session }: { session: Session }) {
           {state === "merged" && <p className="text-[14px] text-go">Done. Your project has the changes now.</p>}
         </div>
       )}
-      {error && <p className="rounded-[5px] border border-clip/40 bg-clip/[0.07] px-3 py-2 text-[13.5px] text-clip">{error}</p>}
+      {error && <p className="rounded-[8px] border border-clip/40 bg-clip/[0.07] px-3 py-2 text-[13.5px] text-clip">{error}</p>}
     </div>
   );
 }
@@ -299,7 +299,7 @@ function Notes({ dir }: { dir: string }) {
           }}
           aria-label="Project notes"
           placeholder={"This is a recipe app built with Next.js.\nRun it with npm run dev.\nNever change the database schema without asking."}
-          className="min-h-64 flex-1 resize-none rounded-[5px] border border-rule bg-desk p-3 font-mono text-[13px] leading-relaxed outline-none placeholder:text-silk-3 focus:border-silk-3"
+          className="min-h-64 flex-1 resize-none rounded-[8px] border border-rule bg-desk p-3 font-mono text-[13px] leading-relaxed outline-none placeholder:text-silk-3 focus:border-silk-3"
         />
       )}
       {error && <p className="text-[13px] text-clip">{error}</p>}

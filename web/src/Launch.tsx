@@ -19,7 +19,7 @@ function CopyLine({ text }: { text: string }) {
           setTimeout(() => setDone(false), 1400);
         });
       }}
-      className="group flex w-full items-center justify-between gap-2 rounded-[4px] border border-rule bg-desk px-2.5 py-1.5 text-left font-mono text-[12.5px] text-silk-2 hover:border-rule-hi"
+      className="group flex w-full items-center justify-between gap-2 rounded-[7px] border border-rule bg-desk px-2.5 py-1.5 text-left font-mono text-[12.5px] text-silk-2 hover:border-rule-hi"
     >
       <span className="truncate">{text}</span>
       {done ? <Check className="h-3.5 w-3.5 shrink-0 text-go" aria-label="Copied" /> : <Copy className="h-3.5 w-3.5 shrink-0 text-silk-3 group-hover:text-silk" aria-label="Copy" />}
@@ -85,7 +85,7 @@ function NewSession({ project, agents, onCancel, onStarted, onProject }: { proje
   }
 
   return (
-    <section aria-labelledby="new-title" className="take-in flex flex-col gap-5 rounded-[6px] border border-rule-hi bg-panel p-5 sm:p-6">
+    <section aria-labelledby="new-title" className="take-in flex flex-col gap-5 rounded-[10px] border border-rule-hi bg-panel p-5 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="new-title" className="text-[22px] font-semibold tracking-[-0.01em]">
           {project.name}
@@ -94,7 +94,7 @@ function NewSession({ project, agents, onCancel, onStarted, onProject }: { proje
       </div>
 
       {!project.repo ? (
-        <div className="flex flex-col gap-3 rounded-[5px] border border-warn/40 bg-warn/[0.06] p-4 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-3 rounded-[8px] border border-warn/40 bg-warn/[0.06] p-4 sm:flex-row sm:items-center">
           <p className="flex-1 text-[14px] text-silk-2">
             <span className="font-medium text-silk">Undo is off for this folder.</span> Kuvend keeps a copy of your files before every turn using git. Turn it on and you can take back anything an agent does.
           </p>
@@ -130,10 +130,10 @@ function NewSession({ project, agents, onCancel, onStarted, onProject }: { proje
                   aria-pressed={on}
                   disabled={agents !== null && !ok}
                   onClick={() => setAgent(a)}
-                  className={cx("flex min-h-11 flex-1 items-center gap-2 rounded-[5px] border px-3 text-left text-[14px] transition-colors disabled:opacity-40", on ? "border-transparent bg-panel-3" : "border-rule hover:border-rule-hi")}
+                  className={cx("flex min-h-11 flex-1 items-center gap-2 rounded-[8px] border px-3 text-left text-[14px] transition-colors disabled:opacity-40", on ? "border-transparent bg-panel-3" : "border-rule hover:border-rule-hi")}
                   style={on ? { boxShadow: `inset 0 0 0 1px ${CAP[a]}` } : undefined}
                 >
-                  <span className="h-2.5 w-2.5 rounded-[2px]" style={{ background: CAP[a] }} aria-hidden />
+                  <span className="h-2 w-2 rounded-full" style={{ background: CAP[a] }} aria-hidden />
                   {AGENT_NAME[a]}
                 </button>
               );
@@ -146,7 +146,7 @@ function NewSession({ project, agents, onCancel, onStarted, onProject }: { proje
         </div>
       </div>
 
-      <label className={cx("flex items-start gap-3 rounded-[5px] border border-rule p-3", !project.commits && "opacity-55")}>
+      <label className={cx("flex items-start gap-3 rounded-[8px] border border-rule p-3", !project.commits && "opacity-55")}>
         <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--color-warn)]" checked={safeCopy} disabled={!project.commits} onChange={(e) => setSafeCopy(e.target.checked)} />
         <span className="text-[14px]">
           <span className="font-medium">Work on a safe copy</span>
@@ -163,11 +163,11 @@ function NewSession({ project, agents, onCancel, onStarted, onProject }: { proje
           onChange={(e) => setPrompt(e.target.value)}
           rows={3}
           placeholder="What do you want to build or fix?"
-          className="w-full resize-y rounded-[5px] border border-rule bg-desk px-3 py-2.5 text-[15px] outline-none placeholder:text-silk-3 focus:border-silk-3"
+          className="w-full resize-y rounded-[8px] border border-rule bg-desk px-3 py-2.5 text-[15px] outline-none placeholder:text-silk-3 focus:border-silk-3"
         />
       </label>
 
-      {error && <p className="rounded-[5px] border border-clip/40 bg-clip/[0.07] px-3 py-2 text-[14px] text-clip">{error}</p>}
+      {error && <p className="rounded-[8px] border border-clip/40 bg-clip/[0.07] px-3 py-2 text-[14px] text-clip">{error}</p>}
 
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Button tone="quiet" onClick={onCancel}>
@@ -243,7 +243,7 @@ export function Launch({ state, onOpen, initialProject }: { state: AppState | nu
                   value={typed}
                   onChange={(e) => setTyped(e.target.value)}
                   placeholder="or paste a folder path"
-                  className="min-h-12 min-w-0 flex-1 rounded-[5px] border border-rule bg-panel px-3 font-mono text-[13px] outline-none placeholder:font-sans placeholder:text-silk-3 focus:border-silk-3"
+                  className="min-h-12 min-w-0 flex-1 rounded-[8px] border border-rule bg-panel px-3 font-mono text-[13px] outline-none placeholder:font-sans placeholder:text-silk-3 focus:border-silk-3"
                 />
                 <Button type="submit" className="min-h-12" disabled={!typed.trim()}>
                   Open
@@ -255,7 +255,7 @@ export function Launch({ state, onOpen, initialProject }: { state: AppState | nu
             {(state?.projects.length ?? 0) > 0 && (
               <div className="flex flex-col">
                 <h2 className="silk mb-2">Recent projects</h2>
-                <ul className="divide-y divide-rule overflow-hidden rounded-[6px] border border-rule bg-panel">
+                <ul className="divide-y divide-rule overflow-hidden rounded-[10px] border border-rule bg-panel">
                   {state!.projects.map((p) => (
                     <li key={p.path}>
                       <button type="button" onClick={() => setPicked(p)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-panel-2">
@@ -280,11 +280,11 @@ export function Launch({ state, onOpen, initialProject }: { state: AppState | nu
             <h2 className="silk mb-2 flex items-center gap-1.5">
               <History className="h-3.5 w-3.5" aria-hidden /> Earlier sessions
             </h2>
-            <ul className="divide-y divide-rule overflow-hidden rounded-[6px] border border-rule bg-panel">
+            <ul className="divide-y divide-rule overflow-hidden rounded-[10px] border border-rule bg-panel">
               {state!.sessions.slice(0, 8).map((s) => (
                 <li key={s.id}>
                   <button type="button" onClick={() => onOpen(s.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-panel-2">
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{ background: CAP[s.agent] }} aria-hidden />
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: CAP[s.agent] }} aria-hidden />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[15px]">{s.title}</span>
                       <span className="block truncate font-mono text-[12px] text-silk-3">
@@ -301,7 +301,7 @@ export function Launch({ state, onOpen, initialProject }: { state: AppState | nu
         )}
       </main>
 
-      <aside aria-label="Channels" className="flex h-fit flex-col gap-4 rounded-[6px] border border-rule bg-panel p-4">
+      <aside aria-label="Channels" className="flex h-fit flex-col gap-4 rounded-[10px] border border-rule bg-panel p-4">
         <h2 className="silk">Channels on this computer</h2>
         <ChannelCheck agent="claude" info={state?.agents.claude} />
         <ChannelCheck agent="codex" info={state?.agents.codex} />
@@ -351,8 +351,8 @@ export function CouncilLink() {
       ) : (
         <>
           <p className="text-[13px] text-silk-3">Optional. Link your Agentic OS dashboard and any take can go to its Roast room: several AIs debate it and a judge rules.</p>
-          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://your-dashboard" aria-label="Dashboard address" className="min-h-9 rounded-[4px] border border-rule bg-desk px-2.5 font-mono text-[12.5px] outline-none placeholder:font-sans placeholder:text-silk-3 focus:border-silk-3" />
-          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Link code (kvd_…)" aria-label="Link code" type="password" className="min-h-9 rounded-[4px] border border-rule bg-desk px-2.5 font-mono text-[12.5px] outline-none placeholder:font-sans placeholder:text-silk-3 focus:border-silk-3" />
+          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://your-dashboard" aria-label="Dashboard address" className="min-h-9 rounded-[7px] border border-rule bg-desk px-2.5 font-mono text-[12.5px] outline-none placeholder:font-sans placeholder:text-silk-3 focus:border-silk-3" />
+          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Link code (kvd_…)" aria-label="Link code" type="password" className="min-h-9 rounded-[7px] border border-rule bg-desk px-2.5 font-mono text-[12.5px] outline-none placeholder:font-sans placeholder:text-silk-3 focus:border-silk-3" />
           <Button size="sm" disabled={busy || !url.trim() || !code.trim()} onClick={() => void save()} icon={busy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : undefined}>
             Link
           </Button>

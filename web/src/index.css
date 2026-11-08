@@ -1,37 +1,36 @@
-@import "@fontsource/barlow/latin-400.css";
-@import "@fontsource/barlow/latin-500.css";
-@import "@fontsource/barlow/latin-600.css";
-@import "@fontsource/barlow-semi-condensed/latin-500.css";
-@import "@fontsource/barlow-semi-condensed/latin-600.css";
-@import "@fontsource/jetbrains-mono/latin-400.css";
-@import "@fontsource/jetbrains-mono/latin-500.css";
+@import "@fontsource-variable/geist/wght.css";
+@import "@fontsource-variable/geist-mono/wght.css";
 @import "tailwindcss";
 
-/* The Recording Console. Panels are anodized charcoal, labels are cream silkscreen, each agent is a
-   channel with its own cap colour, and one meter ramp (green, amber, red) carries every quantity. */
+/* Kuvend, v2: the console, sleeker. Graphite surfaces in four tonal steps, crisp neutral type, each
+   agent a channel with its own cap colour, one meter ramp (green, amber, red) for every quantity,
+   and signal amber as the only accent. Token names are kept from v1 so components read the same. */
 @theme {
-  --color-desk: #111214;
-  --color-panel: #18191c;
-  --color-panel-2: #1f2125;
-  --color-panel-3: #272a2f;
-  --color-rule: #2c2f35;
-  --color-rule-hi: #3b3f46;
-  --color-silk: #e8e0cc;
-  --color-silk-2: #b9b3a3;
-  --color-silk-3: #8f8a7e;
-  --color-claude: #d98a63;
-  --color-codex: #8fb3d9;
-  --color-go: #7ccf8e;
-  --color-warn: #f0a63c;
-  --color-clip: #e2553f;
-  --color-tape: #d9cfb3;
-  --color-tape-ink: #2a2620;
+  --color-desk: #0b0c0e;
+  --color-panel: #121316;
+  --color-panel-2: #18191d;
+  --color-panel-3: #212328;
+  --color-rule: #1f2125;
+  --color-rule-hi: #2e3137;
+  --color-silk: #ececee;
+  --color-silk-2: #a3a6ae;
+  --color-silk-3: #84888f;
+  --color-claude: #e0906a;
+  --color-codex: #8db4e3;
+  --color-go: #6fd391;
+  --color-warn: #f2a93b;
+  --color-clip: #ee5a44;
+  /* v1's masking tape is retired; the channel chip uses these. */
+  --color-tape: #1b1d21;
+  --color-tape-ink: #ececee;
 
-  --font-sans: "Barlow", ui-sans-serif, system-ui, sans-serif;
-  --font-label: "Barlow Semi Condensed", "Barlow", ui-sans-serif, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-label: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "Cascadia Code", monospace;
 
+  /* Expo out for arrivals; a light overshoot for things that physically move (sheets, drawers). */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.32, 1.25, 0.5, 1);
 }
 
 @layer base {
@@ -42,7 +41,9 @@
     font-family: var(--font-sans);
     font-size: 15px;
     line-height: 1.55;
+    letter-spacing: -0.006em;
     overflow-x: clip;
+    font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
     font-variant-numeric: tabular-nums;
   }
@@ -53,7 +54,11 @@
   :focus-visible {
     outline: 2px solid var(--color-warn);
     outline-offset: 2px;
-    border-radius: 3px;
+    border-radius: 5px;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--color-warn);
   }
   * {
     scrollbar-width: thin;
@@ -77,23 +82,19 @@
     font-family: var(--font-label);
     font-weight: 500;
     font-size: 12.5px;
-    letter-spacing: 0.01em;
-    color: var(--color-silk-2);
+    letter-spacing: 0;
+    color: var(--color-silk-3);
   }
 
-  /* A scribble strip: masking tape with the channel's name written on it. */
+  /* The channel chip: the agent's cap and its name on a quiet raised plate. (v1 was masking tape.) */
   .scribble {
-    /* Torn ends: masking tape ripped off the roll, never a pill. */
-    clip-path: polygon(0 8%, 3px 0, 100% 0, calc(100% - 2px) 22%, 100% 46%, calc(100% - 3px) 70%, 100% 100%, 2px 100%, 0 78%, 3px 52%, 0 30%);
-    transform: rotate(-0.6deg);
     background: var(--color-tape);
     color: var(--color-tape-ink);
     font-family: var(--font-label);
-    font-weight: 600;
-    border-radius: 2px;
-    box-shadow:
-      0 1px 0 rgb(0 0 0 / 0.5),
-      inset 0 -1px 0 rgb(0 0 0 / 0.08);
+    font-weight: 550;
+    letter-spacing: -0.005em;
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 1px var(--color-rule-hi);
   }
 
   /* Agent replies, rendered from markdown. */
@@ -124,7 +125,7 @@
     padding-left: 1.3em;
   }
   .prose-take ul {
-    list-style: square;
+    list-style: disc;
   }
   .prose-take ol {
     list-style: decimal;
@@ -144,12 +145,12 @@
     font-size: 0.86em;
     background: var(--color-panel-3);
     padding: 0.1em 0.35em;
-    border-radius: 3px;
+    border-radius: 5px;
   }
   .prose-take pre {
     background: var(--color-desk);
     border: 1px solid var(--color-rule);
-    border-radius: 4px;
+    border-radius: 7px;
     padding: 0.8em 1em;
     overflow-x: auto;
     font-size: 13px;
@@ -178,18 +179,25 @@
 
   /* A take arriving on tape slides up from the record head. */
   .take-in {
-    animation: take-in 420ms var(--ease-out) both;
+    animation: take-in 520ms var(--ease-out) both;
   }
   @keyframes take-in {
     from {
-      transform: translateY(10px);
+      transform: translateY(12px) scale(0.985);
       opacity: 0;
+      filter: blur(4px);
     }
+  }
+  /* Raised surfaces: a soft offset shadow, never a halo. */
+  .lift {
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.03) inset,
+      0 12px 32px -18px rgb(0 0 0 / 0.7);
   }
   .led-on {
     box-shadow:
-      0 0 0 1px rgb(0 0 0 / 0.4),
-      0 0 10px -1px currentColor;
+      0 0 0 1px rgb(0 0 0 / 0.5),
+      0 0 8px -2px currentColor;
   }
   .led-pulse {
     animation: led 1.1s ease-in-out infinite;

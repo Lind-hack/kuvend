@@ -33,11 +33,11 @@ export function Meter({ value, max, segments = 10, tone, label }: { value: numbe
   );
 }
 
-// The channel's scribble strip: masking tape with the agent's name.
+// The channel chip: the agent's cap and its name.
 export function Scribble({ agent, small }: { agent: AgentId; small?: boolean }) {
   return (
-    <span className={cx("scribble inline-flex items-center gap-1.5", small ? "px-1.5 py-[1px] text-[12px]" : "px-2 py-0.5 text-[13px]")}>
-      <span className="inline-block h-2 w-2 rounded-[1px]" style={{ background: CAP[agent] }} aria-hidden />
+    <span className={cx("scribble inline-flex items-center gap-1.5", small ? "h-6 px-2 text-[12px]" : "h-7 px-2.5 text-[13px]")}>
+      <span className="inline-block h-[7px] w-[7px] rounded-full" style={{ background: CAP[agent] }} aria-hidden />
       {AGENT_NAME[agent]}
     </span>
   );
@@ -47,7 +47,7 @@ export function Scribble({ agent, small }: { agent: AgentId; small?: boolean }) 
 export function ModeSwitch({ value, onChange, disabled }: { value: Mode; onChange: (m: Mode) => void; disabled?: boolean }) {
   const modes: Mode[] = ["plan", "edit", "full"];
   return (
-    <div role="radiogroup" aria-label="What the agent may do" className="inline-flex rounded-[5px] border border-rule bg-desk p-[2px]">
+    <div role="radiogroup" aria-label="What the agent may do" className="inline-flex rounded-[9px] border border-rule bg-desk p-[3px]">
       {modes.map((m) => {
         const on = m === value;
         return (
@@ -60,8 +60,8 @@ export function ModeSwitch({ value, onChange, disabled }: { value: Mode; onChang
             title={MODE_INFO[m].hint}
             onClick={() => onChange(m)}
             className={cx(
-              "font-label min-h-8 rounded-[3px] px-2.5 text-[13px] font-semibold transition-[background-color,color] duration-150",
-              on ? (m === "full" ? "bg-clip text-desk" : "bg-silk text-desk") : "text-silk-3 hover:text-silk",
+              "font-label min-h-8 rounded-[6px] px-3 text-[13px] font-medium transition-[background-color,color,box-shadow] duration-200 ease-[var(--ease-out)]",
+              on ? (m === "full" ? "bg-clip text-desk shadow-[0_1px_2px_rgb(0_0_0/0.4)]" : "bg-silk text-desk shadow-[0_1px_2px_rgb(0_0_0/0.4)]") : "text-silk-3 hover:text-silk",
             )}
           >
             {MODE_INFO[m].label}
@@ -80,7 +80,7 @@ export function Button({ tone = "plain", size = "md", icon, className, children,
       type="button"
       {...rest}
       className={cx(
-        "inline-flex items-center justify-center gap-1.5 rounded-[5px] font-medium transition-[background-color,color,border-color,transform] duration-150 active:translate-y-[1px] disabled:opacity-45 disabled:active:translate-y-0",
+        "inline-flex items-center justify-center gap-1.5 rounded-[8px] font-medium transition-[background-color,color,border-color,transform] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-45 disabled:active:scale-100",
         size === "sm" ? "min-h-8 px-2.5 text-[13px]" : "min-h-10 px-3.5 text-[14px]",
         tone === "primary" && "bg-silk text-desk hover:bg-white",
         tone === "plain" && "border border-rule-hi bg-panel-2 text-silk hover:border-silk-3",
@@ -96,7 +96,7 @@ export function Button({ tone = "plain", size = "md", icon, className, children,
 }
 
 export function Kbd({ children }: { children: ReactNode }) {
-  return <kbd className="rounded-[3px] border border-rule-hi px-1 font-mono text-[11px] text-silk-3">{children}</kbd>;
+  return <kbd className="rounded-[5px] border border-rule-hi px-1 font-mono text-[11px] text-silk-3">{children}</kbd>;
 }
 
 export const ago = (iso: string) => {

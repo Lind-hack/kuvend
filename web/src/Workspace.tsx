@@ -36,9 +36,9 @@ function Rack({ state, current, currentRunning, onOpen, onNew, onClose }: { stat
                 type="button"
                 onClick={() => onOpen(s.id)}
                 aria-current={on ? "page" : undefined}
-                className={cx("flex w-full items-start gap-2.5 rounded-[5px] px-2 py-2 text-left transition-colors", on ? "bg-panel-3" : "hover:bg-panel-2")}
+                className={cx("flex w-full items-start gap-2.5 rounded-[8px] px-2 py-2 text-left transition-colors", on ? "bg-panel-3" : "hover:bg-panel-2")}
               >
-                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-[1px]" style={{ background: CAP[s.agent] }} aria-hidden />
+                <span className="mt-[7px] h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: CAP[s.agent] }} aria-hidden />
                 <span className="min-w-0 flex-1">
                   <span className={cx("block truncate text-[14px]", on ? "text-silk" : "text-silk-2")}>{s.title}</span>
                   <span className="block truncate text-[12px] text-silk-3">
@@ -152,7 +152,7 @@ export function Workspace({ id, state, onOpen, onHome, refreshState }: { id: str
   return (
     <div className="grid h-dvh min-h-0 grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)_minmax(340px,30vw)]">
       {/* The rack: every session, newest first. A drawer on small screens. */}
-      <aside className={cx("min-h-0 border-r border-rule bg-panel max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-30 max-lg:w-[86vw] max-lg:max-w-[320px] max-lg:shadow-[0_0_60px_rgb(0_0_0/0.6)] max-lg:transition-transform max-lg:duration-200", !rackOpen && "max-lg:-translate-x-full")}>
+      <aside className={cx("min-h-0 border-r border-rule bg-panel max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-30 max-lg:w-[86vw] max-lg:max-w-[320px] max-lg:shadow-[0_0_60px_rgb(0_0_0/0.6)] max-lg:transition-transform max-lg:duration-[420ms] max-lg:ease-[var(--ease-spring)]", !rackOpen && "max-lg:-translate-x-full")}>
         <Rack state={state} current={id} currentRunning={running} onOpen={(s) => (setRackOpen(false), onOpen(s))} onNew={onHome} onClose={rackOpen ? () => setRackOpen(false) : undefined} />
       </aside>
       {rackOpen && <button type="button" aria-label="Close sessions" className="fixed inset-0 z-20 bg-black/50 lg:hidden" onClick={() => setRackOpen(false)} />}
@@ -249,15 +249,15 @@ export function Workspace({ id, state, onOpen, onHome, refreshState }: { id: str
         >
           <div className="mx-auto flex max-w-[820px] flex-col gap-2.5">
             {!running && turns.length > 0 && (
-              <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
+              <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {QUICK.map((q) => (
-                  <button key={q.label} type="button" disabled={!!busy} onClick={() => void send(q.prompt)} className="shrink-0 rounded-[4px] border border-rule px-2.5 py-1 text-[13px] text-silk-2 transition-colors hover:border-rule-hi hover:text-silk disabled:opacity-40">
+                  <button key={q.label} type="button" disabled={!!busy} onClick={() => void send(q.prompt)} className="shrink-0 rounded-[7px] border border-rule px-2.5 py-1 text-[13px] text-silk-2 transition-colors hover:border-rule-hi hover:text-silk disabled:opacity-40">
                     {q.label}
                   </button>
                 ))}
               </div>
             )}
-            <div className="rounded-[6px] border border-rule-hi bg-desk focus-within:border-silk-3">
+            <div className="rounded-[10px] border border-rule-hi bg-desk focus-within:border-silk-3">
               <label htmlFor="talkback" className="sr-only">
                 Message to {AGENT_NAME[agent]}
               </label>
@@ -277,7 +277,7 @@ export function Workspace({ id, state, onOpen, onHome, refreshState }: { id: str
                 className="block w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-[15px] leading-relaxed outline-none placeholder:text-silk-3"
               />
               <div className="flex flex-wrap items-center gap-2 px-2 pb-2">
-                <div role="radiogroup" aria-label="Agent" className="inline-flex rounded-[5px] border border-rule p-[2px]">
+                <div role="radiogroup" aria-label="Agent" className="inline-flex rounded-[8px] border border-rule p-[2px]">
                   {(["claude", "codex"] as AgentId[]).map((a) => (
                     <button
                       key={a}
@@ -286,9 +286,9 @@ export function Workspace({ id, state, onOpen, onHome, refreshState }: { id: str
                       aria-checked={agent === a}
                       disabled={!!state && !installed.includes(a)}
                       onClick={() => setAgent(a)}
-                      className={cx("font-label flex min-h-8 items-center gap-1.5 rounded-[3px] px-2.5 text-[13px] font-semibold transition-colors disabled:opacity-35", agent === a ? "bg-panel-3 text-silk" : "text-silk-3 hover:text-silk")}
+                      className={cx("font-label flex min-h-8 items-center gap-1.5 rounded-[5px] px-2.5 text-[13px] font-semibold transition-colors disabled:opacity-35", agent === a ? "bg-panel-3 text-silk" : "text-silk-3 hover:text-silk")}
                     >
-                      <span className="h-2 w-2 rounded-[1px]" style={{ background: CAP[a] }} aria-hidden />
+                      <span className="h-[7px] w-[7px] rounded-full" style={{ background: CAP[a] }} aria-hidden />
                       {a === "claude" ? "Claude" : "Codex"}
                     </button>
                   ))}
@@ -310,7 +310,7 @@ export function Workspace({ id, state, onOpen, onHome, refreshState }: { id: str
                   aria-label={`Model for ${AGENT_NAME[agent]}`}
                   title={`Which model ${AGENT_NAME[agent]} uses. Leave empty for its own default. Saved for every session.`}
                   placeholder="default model"
-                  className="min-h-8 w-[132px] rounded-[4px] border border-rule bg-transparent px-2 font-mono text-[12px] text-silk-2 outline-none placeholder:font-sans placeholder:text-silk-3 focus:border-silk-3"
+                  className="min-h-8 w-[132px] rounded-[7px] border border-rule bg-transparent px-2 font-mono text-[12px] text-silk-2 outline-none placeholder:font-sans placeholder:text-silk-3 focus:border-silk-3"
                 />
                 <datalist id={`models-${agent}`}>
                   {(suggest[agent] ?? []).map((m) => (
@@ -337,8 +337,10 @@ export function Workspace({ id, state, onOpen, onHome, refreshState }: { id: str
       </main>
 
       {/* The monitor: what changed, the running app, saving, notes. A sheet on small screens. */}
-      <aside className={cx("flex min-h-0 flex-col border-l border-rule bg-panel max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:h-[82dvh] max-lg:rounded-t-[10px] max-lg:border-t max-lg:shadow-[0_-20px_60px_rgb(0_0_0/0.6)] max-lg:transition-transform max-lg:duration-200", !monitorOpen && "max-lg:translate-y-full")}>
-        <div className="flex justify-end px-2 pt-2 lg:hidden">
+      <aside className={cx("relative flex min-h-0 flex-col border-l border-rule bg-panel max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:h-[82dvh] max-lg:rounded-t-[18px] max-lg:border-t max-lg:shadow-[0_-20px_60px_rgb(0_0_0/0.6)] max-lg:transition-transform max-lg:duration-[420ms] max-lg:ease-[var(--ease-spring)]", !monitorOpen && "max-lg:translate-y-full")}>
+        {/* A sheet's grab handle, and its close control sitting in the tab row rather than a row of its own. */}
+        <span className="mx-auto mt-2 h-1 w-9 shrink-0 rounded-full bg-rule-hi lg:hidden" aria-hidden />
+        <div className="absolute top-3 right-2 z-10 lg:hidden">
           <Button size="sm" tone="quiet" onClick={() => setMonitorOpen(false)} aria-label="Close" icon={<X className="h-4 w-4" />} />
         </div>
         <Monitor version={version} session={session} run={data.run} tab={tab} setTab={setTab} busy={busy} diff={diff} setDiff={setDiff} onFix={() => void act("fix", () => api(`/api/sessions/${id}/run/fix`, { body: {} }))} />

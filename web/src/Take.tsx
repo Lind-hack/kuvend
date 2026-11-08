@@ -21,14 +21,14 @@ function ToolRow({ item, cwd }: { item: Extract<Item, { kind: "tool" }>; cwd: st
         type="button"
         onClick={() => item.output && setOpen((o) => !o)}
         aria-expanded={item.output ? open : undefined}
-        className={cx("flex w-full min-w-0 items-center gap-2 rounded-[3px] px-1.5 py-1 text-left font-mono text-[12.5px]", item.output ? "hover:bg-panel-2" : "cursor-default")}
+        className={cx("flex w-full min-w-0 items-center gap-2 rounded-[5px] px-1.5 py-1 text-left font-mono text-[12.5px]", item.output ? "hover:bg-panel-2" : "cursor-default")}
       >
         <Led on color={state === "failed" ? "var(--color-clip)" : state === "running" ? "var(--color-warn)" : "var(--color-go)"} blink={state === "running"} label={state} />
         <span className="shrink-0 text-silk-2">{item.name}</span>
         <span className="min-w-0 truncate text-silk-3">{relative(item.detail, cwd)}</span>
         {item.output && <ChevronRight className={cx("ml-auto h-3.5 w-3.5 shrink-0 text-silk-3 transition-transform duration-150", open && "rotate-90")} aria-hidden />}
       </button>
-      {open && item.output && <pre className="mt-1 mb-2 max-h-72 overflow-auto rounded-[4px] border border-rule bg-desk px-3 py-2 font-mono text-[12px] leading-relaxed whitespace-pre-wrap text-silk-2">{item.output}</pre>}
+      {open && item.output && <pre className="mt-1 mb-2 max-h-72 overflow-auto rounded-[7px] border border-rule bg-desk px-3 py-2 font-mono text-[12px] leading-relaxed whitespace-pre-wrap text-silk-2">{item.output}</pre>}
     </li>
   );
 }
@@ -47,7 +47,7 @@ function ToolGroup({ items, cwd }: { items: Extract<Item, { kind: "tool" }>[]; c
       </ul>
     );
   return (
-    <button type="button" onClick={() => setOpen(true)} className="flex items-center gap-2 self-start rounded-[3px] border-l border-rule py-1 pr-2 pl-3.5 font-mono text-[12.5px] text-silk-3 hover:text-silk">
+    <button type="button" onClick={() => setOpen(true)} className="flex items-center gap-2 self-start rounded-[5px] border-l border-rule py-1 pr-2 pl-3.5 font-mono text-[12.5px] text-silk-3 hover:text-silk">
       <Terminal className="h-3.5 w-3.5" aria-hidden />
       {items.length} steps{failed ? `, ${failed} failed` : ""}
       {running && <Led color="var(--color-warn)" blink label="running" />}
@@ -62,7 +62,7 @@ export function FileMeters({ files, onOpen }: { files: FileChange[]; onOpen?: (f
     <ul className="flex flex-col">
       {files.map((f) => (
         <li key={f.path}>
-          <button type="button" onClick={() => onOpen?.(f)} disabled={!onOpen} className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-[3px] px-1.5 py-1 text-left hover:bg-panel-2 disabled:hover:bg-transparent">
+          <button type="button" onClick={() => onOpen?.(f)} disabled={!onOpen} className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-[5px] px-1.5 py-1 text-left hover:bg-panel-2 disabled:hover:bg-transparent">
             <span className="min-w-0 truncate font-mono text-[12.5px]">
               <span className={cx("mr-1.5", f.status === "added" ? "text-go" : f.status === "deleted" ? "text-clip" : "text-silk-3")}>{f.status === "added" ? "new" : f.status === "deleted" ? "gone" : f.status === "renamed" ? "moved" : "edit"}</span>
               {f.path}
@@ -97,7 +97,7 @@ function CouncilCard({ council, agent, busy, onRefresh, onApply }: { council: Co
   const v = council.verdict;
   const stage = council.status === "queued" ? "Waiting for a seat at the table" : council.status === "evidence" ? "Reading the change" : council.status === "judging" ? `The judge is scoring round ${council.rounds}` : `Debating, round ${Math.max(1, council.rounds)} of up to 3`;
   return (
-    <div className="flex flex-col gap-3 rounded-[6px] border border-warn/35 bg-panel p-4">
+    <div className="flex flex-col gap-3 rounded-[10px] border border-warn/35 bg-panel p-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <Gavel className="h-4 w-4 text-warn" aria-hidden />
         <span className="font-medium">The council</span>
@@ -202,7 +202,7 @@ export function Take({ turn, cwd, delta, index, last, actions }: { turn: Turn; c
           {review ? turn.prompt : turn.prompt.length > 600 ? `${turn.prompt.slice(0, 600)}…` : turn.prompt}
         </p>
 
-        <div className="flex min-w-0 flex-col gap-3 rounded-[6px] border border-rule bg-panel p-4" style={{ boxShadow: `inset 0 2px 0 ${CAP[turn.agent]}` }}>
+        <div className="flex min-w-0 flex-col gap-3 rounded-[10px] border border-rule bg-panel p-4" style={{ boxShadow: `inset 0 2px 0 ${CAP[turn.agent]}` }}>
           {blocks.length === 0 && running && !delta && (
             <p className="flex items-center gap-2 text-[14px] text-silk-3">
               <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden /> {AGENT_NAME[turn.agent]} is reading your project…
@@ -213,12 +213,12 @@ export function Take({ turn, cwd, delta, index, last, actions }: { turn: Turn; c
             if (b.kind === "text") return <div key={i} className="prose-take" dangerouslySetInnerHTML={{ __html: renderMarkdown(b.text) }} />;
             if (b.kind === "error")
               return (
-                <p key={i} className="flex items-start gap-2 rounded-[4px] border border-clip/40 bg-clip/[0.07] px-3 py-2 text-[14px] text-clip">
+                <p key={i} className="flex items-start gap-2 rounded-[7px] border border-clip/40 bg-clip/[0.07] px-3 py-2 text-[14px] text-clip">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> {b.text}
                 </p>
               );
             return (
-              <div key={i} className="flex flex-col gap-2.5 rounded-[4px] border border-warn/40 bg-warn/[0.06] p-3">
+              <div key={i} className="flex flex-col gap-2.5 rounded-[7px] border border-warn/40 bg-warn/[0.06] p-3">
                 <p className="flex items-center gap-2 text-[14px] font-medium">
                   <ShieldAlert className="h-4 w-4 text-warn" aria-hidden /> It wanted to do {b.tools.length === 1 ? "this" : "these"}, and Edit mode stopped it:
                 </p>

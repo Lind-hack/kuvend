@@ -2,13 +2,31 @@
   "name": "kuvend",
   "version": "0.1.0",
   "description": "A local workspace for your coding agents: chat with Claude Code and Codex in your real project, undo any turn, run your app, and get a second opinion before you ship.",
-  "type": "module",
+  "keywords": [
+    "claude-code",
+    "codex",
+    "ai",
+    "coding-agent",
+    "undo",
+    "workspace",
+    "vibe-coding"
+  ],
+  "homepage": "https://kuvend.pages.dev",
+  "bugs": {
+    "url": "https://github.com/Lind-hack/kuvend/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lind-hack/kuvend.git"
+  },
   "license": "MIT",
+  "author": "Lind Sylqa",
+  "type": "module",
   "bin": {
     "kuvend": "bin/kuvend.mjs"
   },
   "files": [
-    "bin",
+    "bin/kuvend.mjs",
     "dist"
   ],
   "engines": {
@@ -19,7 +37,9 @@
     "build": "vite build && tsc -p tsconfig.server.json",
     "start": "node bin/kuvend.mjs",
     "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.web.json --noEmit",
-    "test": "tsx --test server/core.test.ts"
+    "test": "tsx --test server/core.test.ts",
+    "prepublishOnly": "npm run build && npm test",
+    "build:site": "node site-src/build.mjs"
   },
   "dependencies": {
     "cross-spawn": "^7.0.6",
@@ -27,9 +47,8 @@
     "marked": "^18.1.3"
   },
   "devDependencies": {
-    "@fontsource/barlow": "^5.3.0",
-    "@fontsource/barlow-semi-condensed": "^5.3.0",
-    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
     "@tailwindcss/vite": "^4.3.5",
     "@types/cross-spawn": "^6.0.6",
     "@types/node": "^26.6.6",
@@ -39,6 +58,7 @@
     "lucide-react": "^1.70.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "shaders": "^4.0.7",
     "tailwindcss": "^4.3.5",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",

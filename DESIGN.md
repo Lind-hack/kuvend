@@ -1,68 +1,68 @@
 ---
 name: Kuvend
-description: A local recording console where coding agents record each change as a take on tape, and every take can be checked, undone, or saved.
+description: A graphite console where coding agents record each change as a take, and every take can be checked, undone, or saved.
 colors:
-  desk: "#111214"
-  panel: "#18191c"
-  panel-2: "#1f2125"
-  panel-3: "#272a2f"
-  rule: "#2c2f35"
-  rule-hi: "#3b3f46"
-  silk: "#e8e0cc"
-  silk-2: "#b9b3a3"
-  silk-3: "#8f8a7e"
-  claude: "#d98a63"
-  codex: "#8fb3d9"
-  go: "#7ccf8e"
-  warn: "#f0a63c"
-  clip: "#e2553f"
-  tape: "#d9cfb3"
-  tape-ink: "#2a2620"
+  desk: "#0b0c0e"
+  panel: "#121316"
+  panel-2: "#18191d"
+  panel-3: "#212328"
+  rule: "#1f2125"
+  rule-hi: "#2e3137"
+  silk: "#ececee"
+  silk-2: "#a3a6ae"
+  silk-3: "#84888f"
+  claude: "#e0906a"
+  codex: "#8db4e3"
+  go: "#6fd391"
+  warn: "#f2a93b"
+  clip: "#ee5a44"
+  tape: "#1b1d21"
+  tape-ink: "#ececee"
 typography:
   display:
-    fontFamily: "Barlow, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
     fontSize: "clamp(30px, 4vw, 44px)"
     fontWeight: 600
     lineHeight: 1.08
     letterSpacing: "-0.025em"
   headline:
-    fontFamily: "Barlow, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
     fontSize: "22px"
     fontWeight: 600
     lineHeight: 1.55
     letterSpacing: "-0.01em"
   title:
-    fontFamily: "Barlow, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
     fontSize: "16px"
     fontWeight: 500
     lineHeight: 1.55
     letterSpacing: "normal"
   body:
-    fontFamily: "Barlow, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
     fontSize: "15px"
     fontWeight: 400
     lineHeight: 1.55
     letterSpacing: "normal"
   label:
-    fontFamily: "Barlow Semi Condensed, Barlow, ui-sans-serif, sans-serif"
+    fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
     fontSize: "12.5px"
     fontWeight: 500
     lineHeight: 1.55
     letterSpacing: "0.01em"
   mono:
-    fontFamily: "JetBrains Mono, ui-monospace, Cascadia Code, monospace"
+    fontFamily: "Geist Mono Variable, ui-monospace, Cascadia Code, monospace"
     fontSize: "12.5px"
     fontWeight: 400
     lineHeight: 1.6
     letterSpacing: "normal"
 rounded:
   tick: "1px"
-  tape: "2px"
-  chip: "3px"
-  field: "4px"
-  control: "5px"
-  panel: "6px"
-  sheet: "10px"
+  chip: "6px"
+  key: "5px"
+  field: "7px"
+  control: "8px"
+  panel: "10px"
+  sheet: "18px"
 spacing:
   xxs: "2px"
   xs: "4px"
@@ -116,11 +116,19 @@ components:
 
 ## Overview
 
-**Creative North Star: "The Recording Console"**
+**Creative North Star: "The Recording Console", v2: sleek graphite**
 
 Kuvend looks like a recording desk, not a code editor. Panels are anodized charcoal laid in tonal steps, labels are cream silkscreen in a condensed face, each agent is a channel with its own cap colour, and every quantity reads on one green-amber-red meter ramp. The surface is flat. Depth comes from the step between panels and from hairline rules, never from shadows on resting surfaces.
 
 The metaphor is the take. Each message sent to an agent becomes a numbered take on tape: the take records what the agent did, the files it touched appear as meters, and a take can be undone, or sent to the other channel for a second listen. The metaphor stays on objects (take, tape, channel, second listen, cap). Controls use plain verbs (Undo, Save, Check). Density is calm and beginner-first: one reading column of at most 820px, with raw diffs, command output and logs folded behind rows and never open by default. The desk refuses the dark-IDE shell of sidebar, chat and diff, and carries one functional accent, signal amber.
+
+**v2 (November 2026): the console, sleeker.** The take, the channels, the LEDs and the meter ramp stay; the costume goes. This note overrides anything older below it:
+- **Graphite, not anodized cream.** Surfaces are neutral graphite in four tonal steps; text is neutral ink (`silk` tokens now hold `#ececee`, `#a3a6ae`, `#84888f`). Token names are unchanged, so components read the same.
+- **One typeface.** Geist (variable) for prose and labels, Geist Mono for anything the machine wrote. Barlow, Barlow Semi Condensed and JetBrains Mono are retired. Labels stay sentence case and untracked.
+- **Channel chips, not masking tape.** The scribble strip is now a quiet plate: panel fill, a 1px `rule-hi` inner edge, a 7px round cap dot and the channel name, 6px radius, no rotation, no torn ends. Cap markers everywhere (rack, composer, launch) are round dots.
+- **Softer, consistent radii.** Keys 5px, chips 6px, fields 7px, controls 8px, panels and take cards 10px, the phone sheet's top corners 18px. LEDs and cap dots are the only full circles; pills are still not used.
+- **Motion with physics.** Buttons press by scaling to 0.97 (not a 1px drop). A take arrives with a 520ms expo ease from 12px below, 98.5% scale and a 4px blur. The phone sheet and the rack drawer move on a light-overshoot spring (`--ease-spring`, 420ms). The sheet has a grab handle and its close control sits in the tab row. Reduced motion turns all of it off.
+- **Depth.** Still flat at rest. Selected mode and channel keys carry a 1px soft drop (`0 1px 2px`) so the lit key reads as raised. Checkboxes and radios take the amber accent.
 
 **Build notes.** The build is the record; these are the places where it departs from the direction contract:
 - The contract names the monitor tabs Changes, Run and Mixdown. The build has Changes, Run, Save and Notes. "Mixdown" is code-comment vocabulary only.
