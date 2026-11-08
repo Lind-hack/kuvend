@@ -37,7 +37,7 @@
     "build": "vite build && tsc -p tsconfig.server.json",
     "start": "node bin/kuvend.mjs",
     "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.web.json --noEmit",
-    "test": "tsx --test server/core.test.ts server/chats.test.ts",
+    "test": "tsx --test --test-concurrency=1 server/core.test.ts server/chats.test.ts",
     "prepublishOnly": "npm run build && npm test",
     "build:site": "node site-src/build.mjs"
   },

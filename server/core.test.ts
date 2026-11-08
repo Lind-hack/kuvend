@@ -217,7 +217,8 @@ test("continue on phone: a one-time code pairs one phone, and a phone's key is a
   assert.throws(() => remote.pair(second.code, "x"), /expired/, "too many wrong guesses kill the code");
   remote.newPairingCode();
   remote.__test.expirePairing();
-  assert.throws(() => remote.pair(remote.newPairingCode().code.replace(/./, "0"), "x"));
+  const real = remote.newPairingCode().code;
+  assert.throws(() => remote.pair(`${real[0] === "0" ? "1" : "0"}${real.slice(1)}`, "x"), "one wrong character is a wrong code");
 
   // Over the server.
   const probe = createServer(0);

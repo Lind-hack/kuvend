@@ -39,6 +39,13 @@ const { createServer } = await import("./server.js");
 const { accessToken, readSession } = await import("./store.js");
 
 const line = (o: unknown) => JSON.stringify(o) + "\n";
+// Put env vars back as they were; one that wasn't set is deleted, not set to the string "undefined".
+const restoreEnv = (saved: Record<string, string | undefined>) => {
+  for (const [k, v] of Object.entries(saved)) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+};
 const project = () => {
   const dir = tmp("kuvend-proj-");
   fs.writeFileSync(path.join(dir, "app.js"), "console.log('v1')\n");
@@ -135,7 +142,7 @@ test("a phone or laptop sending at the same moment: one turn runs, the other is 
   const results = await Promise.allSettled([sessions.send(s.id, { prompt: "one" }), sessions.send(s.id, { prompt: "two" })]);
   assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
   assert.match(String((results.find((r) => r.status === "rejected") as PromiseRejectedResult).reason), /still working/);
-  await new Promise((r) => setTimeout(r, 1500));
+  for (let waited = 0; sessions.isRunning(s.id) && waited < 15_000; waited += 100) await new Promise((r) => setTimeout(r, 100));
   const after = readSession(s.id)!;
   assert.equal(after.turns.length, 1);
   assert.equal(after.turns[0].status, "done");
@@ -188,7 +195,7 @@ test("handing a session to another Kuvend: the chat, its history and the code (u
     assert.notEqual(back.cwd, dir, "your folder stays as it is until you merge the copy");
     assert.equal(fs.readFileSync(path.join(back.cwd, "app.js"), "utf8"), "console.log('work in progress')\n");
   } finally {
-    Object.assign(process.env, saved);
+    restoreEnv(saved);
   }
 });
 
@@ -234,7 +241,7 @@ test("a home folder or a whole drive is never treated as a project, even with a 
     const pkg = await handoff.exportSession(s.id);
     assert.equal(pkg.bundle, null, "a handoff from a home folder sends the conversation only, never its files");
   } finally {
-    Object.assign(process.env, saved);
+    restoreEnv(saved);
   }
   assert.equal(await git.isRepo(path.parse(fakeHome).root), false);
 });
