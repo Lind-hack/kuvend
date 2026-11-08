@@ -1,0 +1,23 @@
+# Kuvend on a server that stays on, so your chats keep going with your laptop off.
+# Edit User= (a normal user that has claude/codex signed in, never root), then:
+#   sudo cp deploy/kuvend.service /etc/systemd/system/kuvend.service
+#   sudo systemctl daemon-reload && sudo systemctl enable --now kuvend
+#   journalctl -u kuvend -f        # its output
+# Pair your laptop or phone: sudo -u <user> npx kuvend code
+
+[Unit]
+Description=Kuvend, a workspace for Claude Code and Codex
+Wants=network-online.target tailscaled.service
+After=network-online.target tailscaled.service
+
+[Service]
+Type=simple
+User=kuvend
+WorkingDirectory=~
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/env npx --yes kuvend@latest serve --port 4777 --route tailscale
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,4 +1,5 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { X } from "lucide-react";
+import { useEffect, useRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { AGENT_NAME, MODE_INFO, type AgentId, type Mode } from "./api";
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
@@ -47,7 +48,7 @@ export function Scribble({ agent, small }: { agent: AgentId; small?: boolean }) 
 export function ModeSwitch({ value, onChange, disabled }: { value: Mode; onChange: (m: Mode) => void; disabled?: boolean }) {
   const modes: Mode[] = ["plan", "edit", "full"];
   return (
-    <div role="radiogroup" aria-label="What the agent may do" className="inline-flex rounded-[9px] border border-rule bg-desk p-[3px]">
+    <div role="radiogroup" aria-label="What the agent may do" className="inline-flex rounded-full bg-black/25 p-[3px] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.07)]">
       {modes.map((m) => {
         const on = m === value;
         return (
@@ -60,8 +61,8 @@ export function ModeSwitch({ value, onChange, disabled }: { value: Mode; onChang
             title={MODE_INFO[m].hint}
             onClick={() => onChange(m)}
             className={cx(
-              "font-label min-h-8 rounded-[6px] px-3 text-[13px] font-medium transition-[background-color,color,box-shadow] duration-200 ease-[var(--ease-out)]",
-              on ? (m === "full" ? "bg-clip text-desk shadow-[0_1px_2px_rgb(0_0_0/0.4)]" : "bg-silk text-desk shadow-[0_1px_2px_rgb(0_0_0/0.4)]") : "text-silk-3 hover:text-silk",
+              "font-label min-h-8 rounded-full px-3.5 text-[13px] font-medium transition-[background-color,color,box-shadow] duration-200 ease-[var(--ease-out)]",
+              on ? (m === "full" ? "bg-clip text-desk shadow-[0_1px_2px_rgb(0_0_0/0.4)]" : "bg-white/[0.12] text-silk shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_1px_2px_rgb(0_0_0/0.4)]") : "text-silk-3 hover:text-silk",
             )}
           >
             {MODE_INFO[m].label}
@@ -80,12 +81,12 @@ export function Button({ tone = "plain", size = "md", icon, className, children,
       type="button"
       {...rest}
       className={cx(
-        "inline-flex items-center justify-center gap-1.5 rounded-[8px] font-medium transition-[background-color,color,border-color,transform] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-45 disabled:active:scale-100",
-        size === "sm" ? "min-h-8 px-2.5 text-[13px]" : "min-h-10 px-3.5 text-[14px]",
-        tone === "primary" && "bg-silk text-desk hover:bg-white",
-        tone === "plain" && "border border-rule-hi bg-panel-2 text-silk hover:border-silk-3",
-        tone === "quiet" && "text-silk-2 hover:bg-panel-3 hover:text-silk",
-        tone === "danger" && "border border-clip/50 text-clip hover:bg-clip/10",
+        "inline-flex items-center justify-center gap-1.5 rounded-full font-medium whitespace-nowrap transition-[background-color,color,box-shadow,transform] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-45 disabled:active:scale-100",
+        size === "sm" ? "min-h-8 px-3 text-[13px]" : "min-h-10 px-4 text-[14px]",
+        tone === "primary" && "bg-[linear-gradient(180deg,#ffffff,#e9e4dc)] text-desk shadow-[0_1px_0_rgb(255_255_255/0.6)_inset,0_6px_18px_-8px_rgb(246_211_168/0.55)] hover:brightness-105",
+        tone === "plain" && "bg-white/[0.06] text-silk shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1)] hover:bg-white/[0.1]",
+        tone === "quiet" && "text-silk-2 hover:bg-white/[0.07] hover:text-silk",
+        tone === "danger" && "text-clip shadow-[inset_0_0_0_1px_rgb(240_106_85/0.45)] hover:bg-clip/10",
         className,
       )}
     >
@@ -108,3 +109,52 @@ export const ago = (iso: string) => {
 };
 
 export const shortPath = (p: string) => p.replace(/^([A-Za-z]:)?[\\/](Users|home)[\\/][^\\/]+/, "~");
+
+// An agent's colour as a small glowing dot.
+export function AgentDot({ agent, className }: { agent: AgentId; className?: string }) {
+  return <span aria-hidden className={cx("inline-block h-[7px] w-[7px] shrink-0 rounded-full", className)} style={{ background: CAP[agent], boxShadow: `0 0 10px -1px ${CAP[agent]}` }} />;
+}
+
+// The Kuvend mark: three peaks, the middle one lit.
+export function Mark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className={cx("h-5 w-5", className)}>
+      <path d="M2 19 L8 9 L11 13.5 L14.5 6 L22 19 Z" fill="rgb(255 255 255 / 0.12)" />
+      <path d="M2 19 L8 9 L11 13.5 L14.5 6 L22 19" fill="none" stroke="var(--color-silk)" strokeWidth="1.6" strokeLinejoin="round" />
+      <circle cx="14.5" cy="6" r="1.6" fill="var(--color-dawn)" />
+    </svg>
+  );
+}
+
+// A glass sheet over the room: a centred card on a computer, a bottom sheet on a phone. Escape closes it.
+export function Sheet({ title, icon, onClose, children, labelledBy = "sheet-title", wide }: { title: ReactNode; icon?: ReactNode; onClose: () => void; children: ReactNode; labelledBy?: string; wide?: boolean }) {
+  const close = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    close.current?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    addEventListener("keydown", onKey);
+    return () => removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby={labelledBy}>
+      <button type="button" aria-label="Close" className="absolute inset-0 bg-black/55 backdrop-blur-[3px]" onClick={onClose} />
+      <div className={cx("glass take-in relative max-h-[92dvh] w-full overflow-y-auto rounded-t-[26px] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-[24px] sm:p-7", wide ? "max-w-[560px]" : "max-w-[460px]")}>
+        <span className="mx-auto -mt-2 mb-3 block h-1 w-9 rounded-full bg-white/15 sm:hidden" aria-hidden />
+        <div className="flex items-start gap-3">
+          {icon && (
+            <span className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-[12px] bg-white/[0.06] text-silk-2 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)]" aria-hidden>
+              {icon}
+            </span>
+          )}
+          <h2 id={labelledBy} className="display min-w-0 flex-1 pt-1 text-[30px]">
+            {title}
+          </h2>
+          <button ref={close} type="button" onClick={onClose} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-silk-2 transition-colors hover:bg-white/[0.08] hover:text-silk">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-4">{children}</div>
+      </div>
+    </div>
+  );
+}

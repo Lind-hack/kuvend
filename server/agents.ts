@@ -29,14 +29,14 @@ export type TurnOptions = {
 
 export type TurnHandle = { done: Promise<{ ok: boolean; costUsd?: number; error?: string }>; stop: () => void };
 
-const clip = (v: unknown, n = 200) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
-const clipBlock = (v: unknown, n = 4000) => {
+export const clip = (v: unknown, n = 200) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+export const clipBlock = (v: unknown, n = 4000) => {
   const s = typeof v === "string" ? v : Array.isArray(v) ? v.map((x) => (typeof x?.text === "string" ? x.text : "")).join("\n") : JSON.stringify(v ?? "");
   return s.length > n ? `${s.slice(0, n)}\n…` : s;
 };
 
 // What a tool call is about, in one line: the command, the file, the search.
-function toolDetail(input: Record<string, unknown> | undefined): string {
+export function toolDetail(input: Record<string, unknown> | undefined): string {
   const i = input ?? {};
   return clip(i.command ?? i.file_path ?? i.path ?? i.pattern ?? i.url ?? i.query ?? i.description ?? i.prompt ?? "");
 }
@@ -143,8 +143,11 @@ export function codexParser(emit: (e: AgentEvent) => void): Parser {
 // ---------- running a turn ----------
 
 export function runTurn(o: TurnOptions): TurnHandle {
-  const cmd = o.agent === "claude" ? "claude" : "codex";
-  const args = o.agent === "claude" ? claudeArgs(o) : codexArgs(o);
+  // Tests set KUVEND_FAKE_AGENT to a script that plays the agent, so they never call a real model.
+  const fake = process.env.KUVEND_FAKE_AGENT;
+  const real = o.agent === "claude" ? claudeArgs(o) : codexArgs(o);
+  const cmd = fake ? process.execPath : o.agent === "claude" ? "claude" : "codex";
+  const args = fake ? [fake, o.agent, ...real] : real;
   const parser = o.agent === "claude" ? claudeParser(o.onEvent) : codexParser(o.onEvent);
   let child: ChildProcess;
   let stopped = false;

@@ -22,7 +22,7 @@ export class RemoteError extends Error {}
 
 export type Route = "tailscale" | "tunnel";
 type Device = { id: string; name: string; hash: string; createdAt: string; lastSeenAt?: string };
-type Pairing = { hash: string; expires: number; tries: number };
+type Pairing = { hash: string; shortHash: string; expires: number; tries: number };
 
 const PAIR_TTL = 10 * 60_000;
 const PAIR_TRIES = 8;
@@ -98,10 +98,15 @@ function cut(device?: string) {
 
 // ---------- pairing ----------
 
-export function newPairingCode(): { code: string; expiresAt: string } {
+// Two forms of one code: a long one inside the QR, and a short one to type. A home-screen app on an
+// iPhone keeps its own storage, apart from Safari, so it pairs by typing the short code once.
+const SHORT = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O or 1/I
+const normalShort = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
+export function newPairingCode(): { code: string; short: string; expiresAt: string } {
   const code = crypto.randomBytes(16).toString("hex");
-  st.pairing = { hash: sha(code), expires: Date.now() + PAIR_TTL, tries: 0 };
-  return { code, expiresAt: new Date(st.pairing.expires).toISOString() };
+  const raw = Array.from(crypto.randomBytes(8), (b) => SHORT[b % SHORT.length]).join("");
+  st.pairing = { hash: sha(code), shortHash: sha(raw), expires: Date.now() + PAIR_TTL, tries: 0 };
+  return { code, short: `${raw.slice(0, 4)}-${raw.slice(4)}`, expiresAt: new Date(st.pairing.expires).toISOString() };
 }
 
 export function pair(code: string, name: string): { token: string; id: string } {
@@ -110,9 +115,11 @@ export function pair(code: string, name: string): { token: string; id: string } 
     st.pairing = null;
     throw new RemoteError("This code has expired. Show a new one on your computer.");
   }
-  if (!/^[a-f0-9]{32}$/.test(code) || !same(sha(code), p.hash)) {
+  const short = normalShort(code);
+  const ok = /^[a-f0-9]{32}$/.test(code) ? same(sha(code), p.hash) : short.length === 8 && same(sha(short), p.shortHash);
+  if (!ok) {
     if (++p.tries >= PAIR_TRIES) st.pairing = null;
-    throw new RemoteError("That code doesn't match. Scan the one on your computer again.");
+    throw new RemoteError("That code doesn't match. Check the code on your computer and try again.");
   }
   st.pairing = null; // one phone per code
   const token = crypto.randomBytes(24).toString("hex");
@@ -132,6 +139,7 @@ export function status() {
     route: st.route,
     url: st.url,
     pairing: st.pairing && Date.now() < st.pairing.expires ? { expiresAt: new Date(st.pairing.expires).toISOString() } : null,
+    kept: keptRoute() !== null,
     devices: devices(),
   };
 }
@@ -249,20 +257,39 @@ function clear() {
   st.awake = null;
 }
 
-export async function startRemote(port: number, handler: http.RequestListener, want: "auto" | Route = "auto") {
+// Phone access stays on across restarts until you turn it off: a paired phone's home-screen app just
+// works whenever Kuvend runs. (A Tailscale address stays the same; a quick tunnel gets a new one.)
+const keepFile = () => path.join(home(), "remote.json");
+export function keptRoute(): "auto" | Route | null {
+  try {
+    const v = JSON.parse(fs.readFileSync(keepFile(), "utf8"))?.route;
+    return v === "auto" || v === "tailscale" || v === "tunnel" ? v : null;
+  } catch {
+    return null;
+  }
+}
+function keep(route: "auto" | Route | null) {
+  if (route) fs.writeFileSync(keepFile(), JSON.stringify({ route }), { mode: 0o600 });
+  else fs.rmSync(keepFile(), { force: true });
+}
+
+export async function startRemote(port: number, handler: http.RequestListener, want: "auto" | Route = "auto", opts: { awake?: boolean } = {}) {
   if (st.route) return status();
   const t = want === "tunnel" ? null : await tailnet();
   if (want === "tailscale" && !t) throw new RemoteError("Tailscale isn't running on this computer. Open Tailscale and sign in, or use the Cloudflare tunnel.");
   if (t) await viaTailscale(port, handler, t);
   else await viaTunnel(port);
-  keepAwake();
+  if (opts.awake !== false) keepAwake(); // a server never sleeps anyway
+  keep(want);
   return status();
 }
 
-export function stopRemote() {
+// `forget`: you turned it off. Quitting Kuvend leaves it remembered, so it comes back on next start.
+export function stopRemote(forget = true) {
   killTree(st.tunnel ?? undefined);
   st.tunnel = null;
   clear();
+  if (forget) keep(null);
   return status();
 }
 

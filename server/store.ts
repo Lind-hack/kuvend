@@ -63,6 +63,10 @@ export type Session = {
   turns: Turn[];
   createdAt: string;
   updatedAt: string;
+  origin?: { agent: AgentId; id: string; imported: number }; // a terminal chat this session continues; its first `imported` turns came from there
+  handoff?: { from: string; at: string; project: string }; // handed over from another computer's Kuvend
+  sentTo?: { peer: string; name: string; remoteId: string; url: string; at: string }; // handed over to another computer: continue it there
+  brief?: string; // the conversation so far in plain text, for an agent that can't resume the original chat
 };
 
 export const newId = (prefix: string) => `${prefix}${Date.now().toString(36)}${crypto.randomBytes(3).toString("hex")}`;
@@ -144,6 +148,34 @@ export function recentProjects(): string[] {
 }
 export function rememberProject(dir: string) {
   writeAtomic(projectsFile(), JSON.stringify([dir, ...recentProjects().filter((p) => p !== dir)].slice(0, 20)));
+}
+
+// Other computers running Kuvend that this one can hand sessions to (a server that stays on).
+export type Peer = { id: string; name: string; url: string; token: string; addedAt: string };
+const peersFile = () => path.join(home(), "peers.json");
+export function readPeers(): Peer[] {
+  try {
+    const v = JSON.parse(fs.readFileSync(peersFile(), "utf8"));
+    return Array.isArray(v) ? v.filter((p) => typeof p?.id === "string" && typeof p?.url === "string" && /^[a-f0-9]{48}$/.test(p?.token ?? "")) : [];
+  } catch {
+    return [];
+  }
+}
+export function writePeers(list: Peer[]) {
+  writeAtomic(peersFile(), JSON.stringify(list, null, 2));
+}
+
+// Where the running server listens, so `kuvend handoff` in a terminal can reach it.
+export function writeRunning(port: number) {
+  writeAtomic(path.join(home(), "running.json"), JSON.stringify({ port, pid: process.pid }));
+}
+export function readRunning(): { port: number; pid: number } | null {
+  try {
+    const v = JSON.parse(fs.readFileSync(path.join(home(), "running.json"), "utf8"));
+    return typeof v?.port === "number" ? v : null;
+  } catch {
+    return null;
+  }
 }
 
 // One random token per install: the browser tab must present it on every request, so no other site or

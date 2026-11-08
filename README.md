@@ -40,12 +40,17 @@ Keep the terminal window open while you work. `Ctrl+C` stops Kuvend and any app 
 
 **Ask the council (optional).** Link Kuvend to an [Agentic OS](https://github.com/Lind-hack/agent-dashboard) dashboard and any take can go to its Roast room. Several AIs debate whether the change is right and what should happen next, and a judge rules. The verdict shows on the take, and one tap sends it to the agent as the next message. To link, make a code in the dashboard under Settings, Kuvend, then paste the address and code on Kuvend's start screen. Kuvend sends only that take's request, the agent's reply and its diff.
 
+**Your terminal chats, in one list.** Every Claude Code and Codex chat on your computer (from the terminal, the desktop apps or the IDE) shows up in Kuvend's sidebar. Open one and Kuvend continues *that exact chat*: the next message resumes it (`claude --resume`, `codex exec resume`), so the agent has its whole context, with the same skills, MCP servers and hooks. In a terminal chat, `npx kuvend handoff` opens it in Kuvend straight away.
+
 **Continue on your phone.** Start on your computer, keep going from your phone, mid-session. The agents keep running on your computer, so the phone gets the very same session: its history, and every skill, MCP server, hook, `CLAUDE.md`/`AGENTS.md` and sign-in the agents use there. Choose *Continue on phone* and scan the code with your phone's camera.
 - With [Tailscale](https://tailscale.com) on both devices, the connection is private between your own devices, nothing public.
 - Without it, Kuvend opens a free [Cloudflare quick tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/) (install `cloudflared` once): an HTTPS link only your paired phone can use.
-- The code works once, for ten minutes. Each paired phone gets its own key, which you can remove from the computer at any time. Over the phone route only a phone's key is accepted, and only the computer can turn phone access on or off or pair a new phone.
-- While phone access is on, Kuvend keeps the computer from sleeping. Keep it plugged in; closing a laptop lid may still put it to sleep.
-- On the phone, *Add to Home Screen* makes Kuvend open like an app.
+- The code works once, for ten minutes. Each paired phone gets its own key, which you can remove from the computer at any time. Over the phone route only a paired device's key is accepted, and only the computer can turn phone access on or off or remove a device.
+- Phone access stays on across restarts until you turn it off, so the phone just works whenever Kuvend runs. While it's on, Kuvend keeps the computer from sleeping. Keep it plugged in; closing a laptop lid may still put it to sleep.
+- On the phone, *Add to Home Screen* makes Kuvend open like an app. On an iPhone the home-screen app has its own storage, so it asks once for the short code shown under the QR (like `K7QD-M3XA`).
+- Phone and computer can use one chat at the same time: one turn runs at a time, the other device sees it live and is asked to wait.
+
+**Keep going with your laptop off.** Run Kuvend on a machine that stays on (a VPS, a spare PC) with `npx kuvend serve`, connect it under *Server*, and send any chat there from its menu: the chat file (so the agent resumes the same conversation), the history, and your code as it is right now, uncommitted work included (`.gitignore`d files like `.env` stay home). Pair your phone with the server too, and the chat goes on with the laptop closed. *Bring it back* returns it to your project as a safe copy on its own branch. See [Run Kuvend on a server](#run-kuvend-on-a-server).
 
 **Modes, in plain words.**
 - **Plan** looks and plans, and changes nothing.
@@ -58,11 +63,23 @@ Keep the terminal window open while you work. `Ctrl+C` stops Kuvend and any app 
 
 ## Security
 
-- Listens on `127.0.0.1` only, unless you turn on phone access (then also on your private Tailscale address, or through a Cloudflare tunnel, for paired phones only).
+- Listens on `127.0.0.1` only, unless you turn on phone access (then also on your private Tailscale address, or through a Cloudflare tunnel, for paired devices only).
+- Handing a chat to a server sends that chat and the project's files over your Tailscale network, to a Kuvend you paired with a one-time code. Ignored files (`.env`, `node_modules`) never go.
 - Every request needs this install's random key. The key is in the link Kuvend prints, and the page keeps it in your browser.
 - Requests from other websites, and from other host names pointing at your machine (DNS rebinding), are refused.
 - Agent replies are rendered as sanitized markdown. A page an agent quotes can't run script in Kuvend's tab.
 - Prompts go to the agents on stdin, never through a shell.
+
+## Run Kuvend on a server
+
+For chats that keep going while your laptop is off. On the server (Linux, as a normal user, never root):
+
+1. Install Node 20+, git, [Tailscale](https://tailscale.com) (signed in to the same account as your laptop and phone), and the agents you use, signed in once: `npm i -g @anthropic-ai/claude-code && claude`, `npm i -g @openai/codex && codex login`. Copy over the skills, `CLAUDE.md`/`AGENTS.md` and MCP servers you want there; the agents use the server's own setup.
+2. Start it: `npx kuvend serve`. It listens on `127.0.0.1` and on the server's private Tailscale address, and keeps remote access on.
+3. To keep it running, use the systemd unit in [`deploy/kuvend.service`](deploy/kuvend.service) (edit the user name, then `sudo cp deploy/kuvend.service /etc/systemd/system/ && sudo systemctl enable --now kuvend`).
+4. On the server, `npx kuvend code` prints its address and a one-time code. On your laptop: *Server*, *Connect*, address and code. Then *Pair your phone with it*.
+
+Handed-over projects land in `~/.kuvend/projects/` on the server, each on its own `kuvend/from-…` branch. If the server's agent can't resume the chat file (a different CLI version), it is briefed with the conversation instead.
 
 ## Develop
 

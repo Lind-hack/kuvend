@@ -243,7 +243,7 @@ test("continue on phone: a one-time code pairs one phone, and a phone's key is a
     assert.equal(await call("/api/remote", phoneHost, laptop), 401, "this install's own key doesn't work over a phone route");
     assert.equal(await call("/api/remote", phoneHost, "a".repeat(48)), 401, "an unknown key doesn't either");
     assert.equal(await call("/api/remote/stop", phoneHost, phone.token, "POST"), 403, "a phone can't turn phone access off");
-    assert.equal(await call("/api/remote/code", `127.0.0.1:${port}`, phone.token, "POST"), 403, "or show a code to pair another phone");
+    assert.equal(await call("/api/remote/code", `127.0.0.1:${port}`, phone.token, "POST"), 200, "a paired device may add another (it can already do everything a phone can)");
     assert.equal(await call("/api/pick-folder", phoneHost, phone.token, "POST"), 409, "the folder picker would open on the computer");
     // A phone watching a session live: removing the phone cuts the stream at once.
     const ended = new Promise<boolean>((resolve) => {

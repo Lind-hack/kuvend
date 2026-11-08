@@ -2,7 +2,7 @@ import { AlertTriangle, ChevronRight, Ear, ExternalLink, Gavel, LoaderCircle, Ro
 import { useEffect, useRef, useState } from "react";
 import { AGENT_NAME, MODE_INFO, type Council, type FileChange, type Item, type Turn } from "./api";
 import { renderMarkdown } from "./md";
-import { Button, CAP, cx, Led, Meter, Scribble } from "./ui";
+import { AgentDot, Button, cx, Led, Meter } from "./ui";
 
 // Paths inside the project are shown relative to it.
 const relative = (detail: string, cwd: string) => {
@@ -21,14 +21,14 @@ function ToolRow({ item, cwd }: { item: Extract<Item, { kind: "tool" }>; cwd: st
         type="button"
         onClick={() => item.output && setOpen((o) => !o)}
         aria-expanded={item.output ? open : undefined}
-        className={cx("flex w-full min-w-0 items-center gap-2 rounded-[5px] px-1.5 py-1 text-left font-mono text-[12.5px]", item.output ? "hover:bg-panel-2" : "cursor-default")}
+        className={cx("flex w-full min-w-0 items-center gap-2 rounded-[8px] px-2 py-1 text-left font-mono text-[12.5px]", item.output ? "hover:bg-white/[0.04]" : "cursor-default")}
       >
         <Led on color={state === "failed" ? "var(--color-clip)" : state === "running" ? "var(--color-warn)" : "var(--color-go)"} blink={state === "running"} label={state} />
         <span className="shrink-0 text-silk-2">{item.name}</span>
         <span className="min-w-0 truncate text-silk-3">{relative(item.detail, cwd)}</span>
         {item.output && <ChevronRight className={cx("ml-auto h-3.5 w-3.5 shrink-0 text-silk-3 transition-transform duration-150", open && "rotate-90")} aria-hidden />}
       </button>
-      {open && item.output && <pre className="mt-1 mb-2 max-h-72 overflow-auto rounded-[7px] border border-rule bg-desk px-3 py-2 font-mono text-[12px] leading-relaxed whitespace-pre-wrap text-silk-2">{item.output}</pre>}
+      {open && item.output && <pre className="mt-1 mb-2 max-h-72 overflow-auto rounded-[12px] bg-black/35 px-3.5 py-2.5 font-mono text-[12px] leading-relaxed whitespace-pre-wrap text-silk-2 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)]">{item.output}</pre>}
     </li>
   );
 }
@@ -47,7 +47,7 @@ function ToolGroup({ items, cwd }: { items: Extract<Item, { kind: "tool" }>[]; c
       </ul>
     );
   return (
-    <button type="button" onClick={() => setOpen(true)} className="flex items-center gap-2 self-start rounded-[5px] border-l border-rule py-1 pr-2 pl-3.5 font-mono text-[12.5px] text-silk-3 hover:text-silk">
+    <button type="button" onClick={() => setOpen(true)} className="flex items-center gap-2 self-start rounded-full bg-white/[0.04] px-3 py-1 font-mono text-[12px] text-silk-3 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)] hover:text-silk">
       <Terminal className="h-3.5 w-3.5" aria-hidden />
       {items.length} steps{failed ? `, ${failed} failed` : ""}
       {running && <Led color="var(--color-warn)" blink label="running" />}
@@ -62,7 +62,7 @@ export function FileMeters({ files, onOpen }: { files: FileChange[]; onOpen?: (f
     <ul className="flex flex-col">
       {files.map((f) => (
         <li key={f.path}>
-          <button type="button" onClick={() => onOpen?.(f)} disabled={!onOpen} className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-[5px] px-1.5 py-1 text-left hover:bg-panel-2 disabled:hover:bg-transparent">
+          <button type="button" onClick={() => onOpen?.(f)} disabled={!onOpen} className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-[9px] px-2 py-1.5 text-left hover:bg-white/[0.05] disabled:hover:bg-transparent">
             <span className="min-w-0 truncate font-mono text-[12.5px]">
               <span className={cx("mr-1.5", f.status === "added" ? "text-go" : f.status === "deleted" ? "text-clip" : "text-silk-3")}>{f.status === "added" ? "new" : f.status === "deleted" ? "gone" : f.status === "renamed" ? "moved" : "edit"}</span>
               {f.path}
@@ -97,7 +97,7 @@ function CouncilCard({ council, agent, busy, onRefresh, onApply }: { council: Co
   const v = council.verdict;
   const stage = council.status === "queued" ? "Waiting for a seat at the table" : council.status === "evidence" ? "Reading the change" : council.status === "judging" ? `The judge is scoring round ${council.rounds}` : `Debating, round ${Math.max(1, council.rounds)} of up to 3`;
   return (
-    <div className="flex flex-col gap-3 rounded-[10px] border border-warn/35 bg-panel p-4">
+    <div className="plate flex flex-col gap-3 rounded-[18px] p-4 shadow-[inset_0_0_0_1px_rgb(241_180_90/0.3)]">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <Gavel className="h-4 w-4 text-warn" aria-hidden />
         <span className="font-medium">The council</span>
@@ -169,81 +169,73 @@ export function Take({ turn, cwd, delta, index, last, actions }: { turn: Turn; c
   const review = turn.kind === "review";
 
   return (
-    <article aria-label={`Take ${index}`} className={cx("take-in relative grid grid-cols-[28px_minmax(0,1fr)] gap-x-3 sm:grid-cols-[44px_minmax(0,1fr)]", undone && "opacity-60")}>
-      {/* The take number on the tape counter, and the lane line down to the next take. */}
-      <div className="flex flex-col items-center">
-        <span className="font-mono text-[12px] text-silk-3 tabular-nums">{String(index).padStart(2, "0")}</span>
-        {!last && <span className="mt-2 w-px flex-1 bg-rule" aria-hidden />}
-      </div>
+    <article aria-label={`Turn ${index}`} className={cx("take-in flex min-w-0 flex-col gap-4 pb-12", undone && "opacity-55")}>
+      {/* What you asked: your side of the conversation. */}
+      {!review && (
+        <p className={cx("max-w-[86%] self-end rounded-[22px] rounded-br-[8px] bg-white/[0.075] px-4 py-3 text-[15.5px] leading-relaxed whitespace-pre-wrap shadow-[inset_0_1px_0_rgb(255_255_255/0.06),inset_0_0_0_1px_rgb(255_255_255/0.05)]", undone && "line-through decoration-silk-3")} style={{ overflowWrap: "anywhere" }}>
+          {turn.prompt.length > 900 ? `${turn.prompt.slice(0, 900)}…` : turn.prompt}
+        </p>
+      )}
 
-      <div className="flex min-w-0 flex-col gap-3 pb-9">
-        {/* What was asked, written on the tape. */}
-        <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <Scribble agent={turn.agent} small />
-          <span className="silk">{review ? "Second listen" : MODE_INFO[turn.mode].label}</span>
+      <div className="flex min-w-0 flex-col gap-3">
+        <header className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-silk-3">
+          <AgentDot agent={turn.agent} />
+          <span className="font-medium text-silk-2">{AGENT_NAME[turn.agent]}</span>
+          <span>{review ? "Second opinion" : MODE_INFO[turn.mode].label}</span>
           {running ? (
-            <span className="flex items-center gap-1.5 text-[12.5px] text-clip">
-              <Led color="var(--color-clip)" blink /> Working · {elapsed(turn)}
-            </span>
+            <span className="text-dawn">Working {elapsed(turn)}</span>
           ) : (
-            <span className="text-[12.5px] text-silk-3">
-              {turn.status === "stopped" ? "Stopped" : turn.status === "failed" ? "Failed" : "Done"} in {elapsed(turn)}
+            <span>
+              {turn.status === "stopped" ? "Stopped" : turn.status === "failed" ? "Failed" : ""} {turn.status !== "done" ? "after " : ""}
+              {elapsed(turn)}
               {typeof turn.costUsd === "number" && turn.costUsd > 0 && (
-                <span className="font-mono" title="What this take would cost at API prices. On a Claude plan it counts against your plan's limits instead.">
+                <span className="font-mono" title="What this turn would cost at API prices. On a Claude plan it counts against your plan's limits instead.">
                   {" "}
-                  · ~${turn.costUsd.toFixed(2)}
+                  ~${turn.costUsd.toFixed(2)}
                 </span>
               )}
             </span>
           )}
         </header>
+        {review && <p className="text-[14px] text-silk-2">{turn.prompt}</p>}
 
-        <p className={cx("max-w-[72ch] text-[16px] leading-relaxed font-medium whitespace-pre-wrap", undone && "line-through decoration-silk-3")} style={{ overflowWrap: "anywhere" }}>
-          {review ? turn.prompt : turn.prompt.length > 600 ? `${turn.prompt.slice(0, 600)}…` : turn.prompt}
-        </p>
-
-        <div className="flex min-w-0 flex-col gap-3 rounded-[10px] border border-rule bg-panel p-4" style={{ boxShadow: `inset 0 2px 0 ${CAP[turn.agent]}` }}>
-          {blocks.length === 0 && running && !delta && (
-            <p className="flex items-center gap-2 text-[14px] text-silk-3">
-              <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden /> {AGENT_NAME[turn.agent]} is reading your project…
-            </p>
-          )}
-          {blocks.map((b, i) => {
-            if (b.kind === "tools") return <ToolGroup key={i} items={b.items} cwd={cwd} />;
-            if (b.kind === "text") return <div key={i} className="prose-take" dangerouslySetInnerHTML={{ __html: renderMarkdown(b.text) }} />;
-            if (b.kind === "error")
-              return (
-                <p key={i} className="flex items-start gap-2 rounded-[7px] border border-clip/40 bg-clip/[0.07] px-3 py-2 text-[14px] text-clip">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> {b.text}
-                </p>
-              );
+        {blocks.length === 0 && running && !delta && <p className="shimmer text-[15px]">{AGENT_NAME[turn.agent]} is reading your project…</p>}
+        {blocks.map((b, i) => {
+          if (b.kind === "tools") return <ToolGroup key={i} items={b.items} cwd={cwd} />;
+          if (b.kind === "text") return <div key={i} className="prose-take" dangerouslySetInnerHTML={{ __html: renderMarkdown(b.text) }} />;
+          if (b.kind === "error")
             return (
-              <div key={i} className="flex flex-col gap-2.5 rounded-[7px] border border-warn/40 bg-warn/[0.06] p-3">
-                <p className="flex items-center gap-2 text-[14px] font-medium">
-                  <ShieldAlert className="h-4 w-4 text-warn" aria-hidden /> It wanted to do {b.tools.length === 1 ? "this" : "these"}, and Edit mode stopped it:
-                </p>
-                <ul className="flex flex-col gap-1 font-mono text-[12.5px] text-silk-2">
-                  {b.tools.map((t, n) => (
-                    <li key={n} className="truncate">
-                      {t.name} {t.detail}
-                    </li>
-                  ))}
-                </ul>
-                {last && !running && (
-                  <Button size="sm" tone="primary" className="self-start" disabled={!!actions.busy} onClick={() => actions.onAllow(b.tools.map((t) => t.allow))}>
-                    Allow and continue
-                  </Button>
-                )}
-              </div>
+              <p key={i} className="flex items-start gap-2 rounded-[14px] bg-clip/[0.08] px-3.5 py-2.5 text-[14px] text-clip shadow-[inset_0_0_0_1px_rgb(240_106_85/0.3)]">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> {b.text}
+              </p>
             );
-          })}
-          {running && delta && <div className="prose-take" dangerouslySetInnerHTML={{ __html: renderMarkdown(delta) }} />}
-        </div>
+          return (
+            <div key={i} className="flex flex-col gap-2.5 rounded-[16px] bg-warn/[0.06] p-4 shadow-[inset_0_0_0_1px_rgb(241_180_90/0.3)]">
+              <p className="flex items-center gap-2 text-[14px] font-medium">
+                <ShieldAlert className="h-4 w-4 text-warn" aria-hidden /> It wanted to do {b.tools.length === 1 ? "this" : "these"}, and {MODE_INFO[turn.mode].label} mode stopped it:
+              </p>
+              <ul className="flex flex-col gap-1 font-mono text-[12.5px] text-silk-2">
+                {b.tools.map((t, n) => (
+                  <li key={n} className="truncate">
+                    {t.name} {t.detail}
+                  </li>
+                ))}
+              </ul>
+              {last && !running && (
+                <Button size="sm" tone="primary" className="self-start" disabled={!!actions.busy} onClick={() => actions.onAllow(b.tools.map((t) => t.allow))}>
+                  Allow and continue
+                </Button>
+              )}
+            </div>
+          );
+        })}
+        {running && delta && <div className="prose-take" dangerouslySetInnerHTML={{ __html: renderMarkdown(delta) }} />}
+        {running && (blocks.length > 0 || delta) && <Led color="var(--color-dawn)" blink label="Working" />}
 
         {/* What actually changed on disk, measured from the checkpoints, not from what the agent said. */}
         {files.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <p className="silk flex items-center gap-2">
+          <div className="plate flex flex-col gap-2 rounded-[16px] p-3">
+            <p className="silk flex items-center gap-2 px-2">
               {files.length} {files.length === 1 ? "file" : "files"} changed
               <span className="font-mono text-[12px]">
                 <span className="text-go">+{added}</span> <span className="text-clip">−{removed}</span>
@@ -258,7 +250,7 @@ export function Take({ turn, cwd, delta, index, last, actions }: { turn: Turn; c
           <div className="flex flex-wrap items-center gap-2">
             {undone ? (
               <>
-                <span className="text-[13.5px] text-silk-2">Undone. Your files are back to how they were before this take.</span>
+                <span className="text-[13.5px] text-silk-2">Undone. Your files are back to how they were before this turn.</span>
                 <Button size="sm" tone="quiet" disabled={!!actions.busy} onClick={actions.onRedo} icon={actions.busy === `redo:${turn.id}` ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5" />}>
                   Redo
                 </Button>
@@ -266,7 +258,7 @@ export function Take({ turn, cwd, delta, index, last, actions }: { turn: Turn; c
             ) : (
               <>
                 <Button size="sm" disabled={!!actions.busy} onClick={actions.onUndo} icon={actions.busy === `undo:${turn.id}` ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}>
-                  Undo this take
+                  Undo
                 </Button>
                 {!review && actions.councilLinked && !turn.council && (
                   <Button size="sm" tone="quiet" disabled={!!actions.busy} onClick={actions.onCouncil} icon={actions.busy === `council:${turn.id}` ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Gavel className="h-3.5 w-3.5" />}>
@@ -275,7 +267,7 @@ export function Take({ turn, cwd, delta, index, last, actions }: { turn: Turn; c
                 )}
                 {!review && actions.canReview && (
                   <Button size="sm" tone="quiet" disabled={!!actions.busy} onClick={actions.onReview} icon={actions.busy === `review:${turn.id}` ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Ear className="h-3.5 w-3.5" />}>
-                    Second listen from {AGENT_NAME[turn.agent === "claude" ? "codex" : "claude"]}
+                    Second opinion from {AGENT_NAME[turn.agent === "claude" ? "codex" : "claude"]}
                   </Button>
                 )}
               </>

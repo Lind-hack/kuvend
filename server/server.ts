@@ -3,7 +3,10 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import os from "node:os";
 import { detectAgents, modelSuggestions } from "./agents.js";
+import * as chats from "./chats.js";
+import * as handoff from "./handoff.js";
 import * as git from "./git.js";
 import { run } from "./proc.js";
 import { detectCommand, errorContext, onRunState, runState, startApp, stopApp } from "./runapp.js";
@@ -11,7 +14,7 @@ import * as council from "./council.js";
 import * as remote from "./remote.js";
 import { checkDiff } from "./safety.js";
 import * as sessions from "./sessions.js";
-import { accessToken, deleteSession, listSessions, readSession, readSettings, recentProjects, saveSettings, type AgentId, type Mode } from "./store.js";
+import { accessToken, deleteSession, listSessions, readPeers, readSession, readSettings, recentProjects, saveSettings, writePeers, type AgentId, type Mode } from "./store.js";
 
 // Kuvend's local server. It listens on 127.0.0.1, and every request must carry the install's token and
 // come from Kuvend's own page: a website you visit can't reach your agents through it. When phone access
@@ -34,12 +37,15 @@ class HttpError extends Error {
   }
 }
 
-async function body(req: http.IncomingMessage): Promise<Record<string, unknown>> {
-  let raw = "";
+async function body(req: http.IncomingMessage, max = 2_000_000): Promise<Record<string, unknown>> {
+  const chunks: Buffer[] = [];
+  let size = 0;
   for await (const chunk of req) {
-    raw += chunk;
-    if (raw.length > 2_000_000) throw new HttpError(413, "Too much data");
+    size += chunk.length;
+    if (size > max) throw new HttpError(413, "Too much data");
+    chunks.push(chunk);
   }
+  const raw = Buffer.concat(chunks).toString("utf8");
   if (!raw) return {};
   try {
     const v = JSON.parse(raw);
@@ -134,8 +140,98 @@ route("GET", "/api/state", async () => ({
   projects: await Promise.all(recentProjects().slice(0, 8).map((p) => inspect(p).catch(() => null))).then((x) => x.filter(Boolean)),
   sessions: listSessions()
     .slice(0, 60)
-    .map((s) => ({ id: s.id, title: s.title, project: s.project, agent: s.agent, branch: s.branch, turns: s.turns.length, running: sessions.isRunning(s.id), updatedAt: s.updatedAt })),
+    .map((s) => ({ id: s.id, title: s.title, project: s.project, agent: s.agent, branch: s.branch, turns: s.turns.length, running: sessions.isRunning(s.id), updatedAt: s.updatedAt, from: s.origin ? "terminal" : s.handoff ? s.handoff.from : null, sentTo: s.sentTo ? { name: s.sentTo.name, url: s.sentTo.url } : null })),
+  machine: os.hostname(),
 }));
+
+// ---------- your terminal chats ----------
+route("GET", "/api/chats", async () => ({ chats: await chats.listChats(80) }));
+route("POST", "/api/chats/import", async (req) => {
+  const b = await body(req);
+  const agent = agentOf(b.agent);
+  if (!agent) throw new HttpError(400, "Which agent?");
+  try {
+    const s = await chats.importChat(agent, str(b.id, 64));
+    return { id: s.id };
+  } catch (e) {
+    throw new HttpError(404, e instanceof Error ? e.message : String(e));
+  }
+});
+
+// ---------- another computer: a server that stays on ----------
+const peerView = () => readPeers().map(({ id, name, url, addedAt }) => ({ id, name, url, addedAt }));
+const bad = (e: unknown, status = 400) => new HttpError(status, e instanceof Error ? e.message : String(e));
+route("GET", "/api/peers", async () => ({ peers: peerView() }));
+route("POST", "/api/peers", async (req) => {
+  laptopOnly(req);
+  const b = await body(req);
+  try {
+    await handoff.addPeer(str(b.url, 300), str(b.code, 64));
+  } catch (e) {
+    throw bad(e);
+  }
+  return { peers: peerView() };
+});
+route("DELETE", "/api/peers/(p[a-z0-9]+)", async (req, m) => {
+  laptopOnly(req);
+  writePeers(readPeers().filter((p) => p.id !== m[1]));
+  return { peers: peerView() };
+});
+route("GET", "/api/peers/(p[a-z0-9]+)/state", async (_r, m) => {
+  try {
+    return await handoff.peerCall(handoff.peer(m[1]), "api/state");
+  } catch (e) {
+    throw bad(e, 502);
+  }
+});
+// A code from the other computer, so a phone can pair with it too (its home-screen app works with the laptop off).
+route("POST", "/api/peers/(p[a-z0-9]+)/code", async (_r, m) => {
+  try {
+    return await handoff.peerCall(handoff.peer(m[1]), "api/remote/code", { body: {} });
+  } catch (e) {
+    throw bad(e, 502);
+  }
+});
+route("POST", "/api/sessions/(s[a-z0-9]+)/send-to", async (req, m) => {
+  const b = await body(req);
+  try {
+    return await handoff.sendTo(m[1], str(b.peer, 20));
+  } catch (e) {
+    throw bad(e);
+  }
+});
+route("POST", "/api/sessions/(s[a-z0-9]+)/bring-back", async (_r, m) => {
+  try {
+    return await handoff.bringBack(m[1]);
+  } catch (e) {
+    throw bad(e);
+  }
+});
+// What the other computer calls: take a session, give one back, and note that it went home.
+route("POST", "/api/handoff/import", async (req) => {
+  try {
+    const s = await handoff.importSession(await body(req, handoff.MAX_PACKAGE));
+    return { id: s.id, title: s.title };
+  } catch (e) {
+    throw e instanceof HttpError ? e : bad(e);
+  }
+});
+route("GET", "/api/handoff/export/(s[a-z0-9]+)", async (_r, m) => {
+  try {
+    return await handoff.exportSession(m[1]);
+  } catch (e) {
+    throw bad(e, 409);
+  }
+});
+route("POST", "/api/handoff/sent/(s[a-z0-9]+)", async (req, m) => {
+  const name = str((await body(req)).name, 60) || "your computer";
+  try {
+    handoff.markSent(m[1], { peer: "", name, remoteId: "", url: "", at: new Date().toISOString() });
+  } catch (e) {
+    throw bad(e, 404);
+  }
+  return { ok: true };
+});
 
 // Never send the link code back to the page: it only needs to know whether a link exists.
 route("GET", "/api/settings", async () => ({ models: readSettings().models, council: council.councilLinked(), suggestions: modelSuggestions() }));
@@ -185,7 +281,7 @@ route("POST", "/api/pick-folder", async (req) => {
 });
 
 // ---------- continue on your phone ----------
-route("GET", "/api/remote", async (req) => ({ ...remote.status(), you: caller.get(req) }));
+route("GET", "/api/remote", async (req) => ({ ...remote.status(), you: caller.get(req), machine: os.hostname() }));
 route("POST", "/api/remote/start", async (req) => {
   laptopOnly(req);
   const want = str((await body(req)).route);
@@ -199,12 +295,12 @@ route("POST", "/api/remote/stop", async (req) => {
   laptopOnly(req);
   return remote.stopRemote();
 });
-route("POST", "/api/remote/code", async (req) => {
-  laptopOnly(req);
+// Any paired device may add another (it can already do everything a phone can); removing stays laptop-only.
+route("POST", "/api/remote/code", async () => {
   const s = remote.status();
   if (!s.on || !s.url) throw new HttpError(409, "Turn on phone access first");
-  const { code, expiresAt } = remote.newPairingCode();
-  return { url: s.url, code, expiresAt };
+  const { code, short, expiresAt } = remote.newPairingCode();
+  return { url: s.url, code, short, expiresAt };
 });
 route("DELETE", "/api/remote/devices/(d[0-9a-f]{10})", async (req, m) => {
   laptopOnly(req);
@@ -349,6 +445,12 @@ function serveStatic(res: http.ServerResponse, pathname: string) {
 }
 
 const same = (a: string, b: string) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+
+// The handler the running server uses, so remote access can serve the same page on another address.
+export const requestHandler = () => {
+  if (!serving.handler) throw new Error("The server isn't running yet");
+  return serving.handler;
+};
 
 export function createServer(port: number) {
   const token = accessToken();

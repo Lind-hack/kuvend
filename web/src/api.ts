@@ -53,11 +53,18 @@ export type Session = {
   turns: Turn[];
   createdAt: string;
   updatedAt: string;
+  origin?: { agent: AgentId; id: string; imported: number };
+  handoff?: { from: string; at: string; project: string };
+  sentTo?: { peer: string; name: string; remoteId: string; url: string; at: string };
 };
 
 export type Project = { path: string; name: string; repo: boolean; commits: boolean; branch: string | null; run: string | null; notes: boolean };
-export type SessionSummary = { id: string; title: string; project: string; agent: AgentId; branch?: string; turns: number; running: boolean; updatedAt: string };
-export type AppState = { agents: Record<AgentId, { installed: boolean; version?: string }>; projects: Project[]; sessions: SessionSummary[] };
+export type SessionSummary = { id: string; title: string; project: string; agent: AgentId; branch?: string; turns: number; running: boolean; updatedAt: string; from: string | null; sentTo: { name: string; url: string } | null };
+export type AppState = { agents: Record<AgentId, { installed: boolean; version?: string }>; projects: Project[]; sessions: SessionSummary[]; machine: string };
+// A Claude Code or Codex chat from the terminal (or their apps) on this computer.
+export type Chat = { agent: AgentId; id: string; cwd: string; title: string; last: string; updatedAt: string; size: number; here: boolean; session: string | null };
+// Another computer running Kuvend, usually a server that stays on.
+export type Peer = { id: string; name: string; url: string; addedAt: string };
 export type RunState = { running: boolean; command: string | null; url: string | null; lines: { at: number; text: string; error: boolean }[]; exitCode: number | null; installing: boolean };
 export type Warning = { level: "stop" | "check"; title: string; detail: string; file?: string };
 
@@ -65,6 +72,10 @@ const KEY = "kuvend.token";
 
 // Opened on a phone (over Tailscale or a tunnel) rather than on the computer Kuvend runs on.
 export const onPhone = !["127.0.0.1", "localhost", "[::1]"].includes(location.hostname);
+
+// Opened from the home screen as an app. On an iPhone it keeps storage apart from Safari, so it pairs
+// on its own, by typing the short code.
+export const standalone = typeof window !== "undefined" && (matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
 
 // A phone that scanned the computer's code opens #pair=<code>&s=<session>.
 export function pairFromHash(): { code: string; session: string | null } | null {
@@ -80,7 +91,7 @@ function readToken(): string {
     } catch {
       /* private window: the in-memory copy below still works for this tab */
     }
-    history.replaceState(null, "", location.pathname + location.search);
+    history.replaceState(null, "", location.pathname + location.search + location.hash.replace(/^#?token=[a-f0-9]{48}&?/, "#").replace(/^#$/, ""));
     return m[1];
   }
   try {
@@ -109,7 +120,8 @@ export async function pairPhone(code: string): Promise<void> {
 }
 
 export type RemoteDevice = { id: string; name: string; createdAt: string; lastSeenAt: string | null };
-export type RemoteStatus = { on: boolean; route: "tailscale" | "tunnel" | null; url: string | null; pairing: { expiresAt: string } | null; devices: RemoteDevice[]; you?: "laptop" | "phone" };
+export type RemoteStatus = { on: boolean; route: "tailscale" | "tunnel" | null; url: string | null; pairing: { expiresAt: string } | null; devices: RemoteDevice[]; you?: "laptop" | "phone"; kept?: boolean; machine?: string };
+export type PairCode = { url: string; code: string; short: string; expiresAt: string };
 
 export class ApiError extends Error {
   constructor(

@@ -1,21 +1,22 @@
 ---
 name: Kuvend
-description: A graphite console where coding agents record each change as a take, and every take can be checked, undone, or saved.
+description: One calm room at blue hour where coding agents work through your chats; every turn can be checked, undone, saved, or carried to your phone and server.
 colors:
-  desk: "#0b0c0e"
-  panel: "#121316"
-  panel-2: "#18191d"
-  panel-3: "#212328"
-  rule: "#1f2125"
-  rule-hi: "#2e3137"
-  silk: "#ececee"
-  silk-2: "#a3a6ae"
-  silk-3: "#84888f"
-  claude: "#e0906a"
-  codex: "#8db4e3"
-  go: "#6fd391"
-  warn: "#f2a93b"
-  clip: "#ee5a44"
+  desk: "#07080c"
+  panel: "#0e1016"
+  panel-2: "#151821"
+  panel-3: "#1d212c"
+  rule: "rgb(255 255 255 / 0.07)"
+  rule-hi: "rgb(255 255 255 / 0.13)"
+  silk: "#eef0f5"
+  silk-2: "#a9aebb"
+  silk-3: "#7f8595"
+  claude: "#e9a07c"
+  codex: "#93bbeb"
+  go: "#79d79b"
+  warn: "#f1b45a"
+  clip: "#f06a55"
+  dawn: "#f6d3a8"
   tape: "#1b1d21"
   tape-ink: "#ececee"
 typography:
@@ -111,6 +112,16 @@ components:
     rounded: "{rounded.panel}"
     padding: "16px"
 ---
+
+> **v3, dusk (2026-11-08).** The console became a room. A drawn backdrop (ridgelines of the Accursed
+> Mountains at blue hour, seeded SVG, no image to load) sits behind everything; what floats over it is
+> frosted glass (`.glass`, `.glass-quiet`), cards on it are faint plates (`.plate`). Instrument Serif
+> (`.display`) carries the few sentences Kuvend says to you; Geist carries the work. Controls are pills,
+> the primary action a warm white with a dawn glow (`--color-dawn`). The chat is one reading column:
+> your message a bubble on the right, the agent's reply as plain prose under its name. Changes, Run,
+> Save and Notes moved from a fixed third column into a glass sheet. Below, older notes still describe
+> v1/v2 where they don't conflict.
+
 
 # Design System: Kuvend
 
