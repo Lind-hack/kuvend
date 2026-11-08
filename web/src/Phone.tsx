@@ -343,7 +343,7 @@ export function SendToServer({ session, onClose, onSent }: { session: string; on
   }
   return (
     <Sheet title="Continue on your server" icon={<Server className="h-[18px] w-[18px]" />} onClose={onClose}>
-      <p className="text-[14px] leading-relaxed text-silk-2">The chat, its history and your code (uncommitted work too, never .env files) go to the server, which picks up the same conversation. This copy pauses until you bring it back.</p>
+      <p className="text-[14px] leading-relaxed text-silk-2">The chat, its history and your code (uncommitted work too, never .env files) go to the server, which picks up the same conversation. This copy pauses until you bring it back. A chat started in your home folder sends only the conversation.</p>
       {peers === null ? (
         !error && <LoaderCircle className="mt-5 h-4 w-4 animate-spin text-silk-3" aria-label="Loading" />
       ) : peers.length === 0 ? (

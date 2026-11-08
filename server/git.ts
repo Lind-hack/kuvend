@@ -21,9 +21,17 @@ export async function git(cwd: string, args: string[], env: Record<string, strin
 const RAW = ["-c", "core.autocrlf=false", "-c", "core.safecrlf=false"];
 const rawGit = (cwd: string, args: string[], env: Record<string, string> = {}) => git(cwd, [...RAW, ...args], env);
 
+// A whole home folder or drive is never a project, even when someone ran `git init` there: snapshotting
+// it would copy every file you own (logins and keys included) into git, and take minutes.
+export function tooBroad(dir: string) {
+  const norm = (p: string) => path.resolve(p).replace(/[\\/]+$/, "").toLowerCase();
+  const d = path.resolve(dir);
+  return norm(d) === norm(os.homedir()) || path.parse(d).root === d || norm(path.parse(d).root) === norm(d);
+}
+
 export async function isRepo(cwd: string) {
   const r = await git(cwd, ["rev-parse", "--show-toplevel"]);
-  return r.ok;
+  return r.ok && !tooBroad(r.out.trim());
 }
 
 export async function hasCommits(cwd: string) {
@@ -37,6 +45,7 @@ export async function branch(cwd: string) {
 
 // "Turn on undo" for a folder that isn't a git repo yet.
 export async function init(cwd: string) {
+  if (tooBroad(cwd)) throw new Error("That's your whole home folder (or a drive). Pick the project's own folder instead.");
   const r = await git(cwd, ["init"]);
   if (!r.ok) throw new Error(r.err.trim() || "git init failed");
   const ignore = path.join(cwd, ".gitignore");
@@ -50,6 +59,12 @@ const HEAVY = ["node_modules", ".next", ".nuxt", ".svelte-kit", ".venv", "venv",
 // A starting .gitignore for a folder that gets git through Kuvend.
 export const DEFAULT_GITIGNORE = ["node_modules/", ".env", ".env.*", "!.env.example", "dist/", "build/", ".next/", ".venv/", "__pycache__/", ".DS_Store", ""].join("\n");
 
+// Git's own message, without the pages of warnings it can print first.
+function gitError(err: string, fallback: string) {
+  const lines = err.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("warning:"));
+  return (lines.at(-1) ?? fallback).slice(0, 300);
+}
+
 function tmpIndex() {
   return path.join(os.tmpdir(), `kuvend-index-${crypto.randomBytes(6).toString("hex")}`);
 }
@@ -60,7 +75,7 @@ export async function snapshot(cwd: string, label: string): Promise<string> {
   try {
     const env = { ...IDENTITY, GIT_INDEX_FILE: index };
     const add = await rawGit(cwd, ["add", "-A", "--", ".", ...HEAVY.map((d) => `:(exclude,glob)**/${d}/**`)], env);
-    if (!add.ok) throw new Error(add.err.trim() || "git add failed");
+    if (!add.ok) throw new Error(gitError(add.err, "git add failed"));
     const tree = await git(cwd, ["write-tree"], env);
     if (!tree.ok) throw new Error(tree.err.trim() || "git write-tree failed");
     const commit = await git(cwd, ["commit-tree", tree.out.trim(), "-m", `kuvend: ${label}`], env);

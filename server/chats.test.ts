@@ -220,3 +220,21 @@ test("a paired computer can send and fetch sessions over its route; a phone's ke
   assert.equal(back.json.session.title, "Peer test");
   server.close();
 });
+
+test("a home folder or a whole drive is never treated as a project, even with a .git in it", async () => {
+  const fakeHome = tmp("kuvend-userhome-");
+  fs.writeFileSync(path.join(fakeHome, "secret.txt"), "token\n");
+  await git.git(fakeHome, ["init", "-q"]);
+  const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+  Object.assign(process.env, { HOME: fakeHome, USERPROFILE: fakeHome });
+  try {
+    assert.equal(await git.isRepo(fakeHome), false, "no undo snapshots of a whole home folder");
+    await assert.rejects(git.init(fakeHome), /home folder/);
+    const s = await sessions.createSession({ project: fakeHome, agent: "claude", mode: "plan", title: "Home chat" });
+    const pkg = await handoff.exportSession(s.id);
+    assert.equal(pkg.bundle, null, "a handoff from a home folder sends the conversation only, never its files");
+  } finally {
+    Object.assign(process.env, saved);
+  }
+  assert.equal(await git.isRepo(path.parse(fakeHome).root), false);
+});
