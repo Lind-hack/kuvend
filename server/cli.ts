@@ -25,7 +25,9 @@ Opens a workspace for Claude Code and Codex in your browser.
   process.exit(0);
 }
 
-const port = Number(value("--port") ?? process.env.KUVEND_PORT ?? 4777);
+// A port you asked for is used or reported; the default moves up a few ports when it's taken.
+const chosen = value("--port") ?? process.env.KUVEND_PORT;
+const port = Number(chosen ?? 4777);
 const folderArg = argv.find((a, i) => !a.startsWith("--") && argv[i - 1] !== "--port");
 const project = folderArg ? path.resolve(folderArg) : undefined;
 if (project && !fs.existsSync(project)) {
@@ -38,16 +40,21 @@ function open(url: string) {
   else execFile(process.platform === "darwin" ? "open" : "xdg-open", [url]);
 }
 
-const server = createServer(port);
-server.on("error", (e: NodeJS.ErrnoException) => {
-  console.error(e.code === "EADDRINUSE" ? `Port ${port} is busy. Is Kuvend already running? Or use --port 4778.` : e.message);
-  process.exit(1);
-});
-server.listen(port, "127.0.0.1", () => {
-  const url = `http://127.0.0.1:${port}/${project ? `?project=${encodeURIComponent(project)}` : ""}#token=${accessToken()}`;
-  console.log(`\n  Kuvend is running.\n\n  ${url}\n\n  Keep this window open. Ctrl+C stops it.\n`);
-  if (!flag("--no-open")) open(url);
-});
+function listen(at: number, triesLeft: number) {
+  const server = createServer(at);
+  server.once("error", (e: NodeJS.ErrnoException) => {
+    if (e.code === "EADDRINUSE" && !chosen && triesLeft > 0) return listen(at + 1, triesLeft - 1);
+    console.error(e.code === "EADDRINUSE" ? `Port ${at} is busy. Close the program using it, or start Kuvend with --port ${at + 1}.` : e.message);
+    process.exit(1);
+  });
+  server.listen(at, "127.0.0.1", () => {
+    const url = `http://127.0.0.1:${at}/${project ? `?project=${encodeURIComponent(project)}` : ""}#token=${accessToken()}`;
+    const moved = at !== port ? `  (Port ${port} was busy, so Kuvend is on ${at}.)\n\n` : "";
+    console.log(`\n  Kuvend is running.\n\n${moved}  ${url}\n\n  Keep this window open. Ctrl+C stops it.\n`);
+    if (!flag("--no-open")) open(url);
+  });
+}
+listen(port, 10);
 
 const quit = () => {
   stopAll();

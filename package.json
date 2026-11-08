@@ -1,6 +1,6 @@
 {
   "name": "kuvend",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A local workspace for your coding agents: chat with Claude Code and Codex in your real project, undo any turn, run your app, and get a second opinion before you ship.",
   "keywords": [
     "claude-code",
