@@ -291,7 +291,7 @@ export function Launch({ state, onOpen, initialProject }: { state: AppState | nu
                         {shortPath(s.project).split(/[\\/]/).pop()} · {s.turns} {s.turns === 1 ? "take" : "takes"}
                       </span>
                     </span>
-                    {s.running && <Led color="var(--color-clip)" blink label="Recording" />}
+                    {s.running && <Led color="var(--color-clip)" blink label="Working" />}
                     <span className="shrink-0 text-[12.5px] text-silk-3">{ago(s.updatedAt)}</span>
                   </button>
                 </li>

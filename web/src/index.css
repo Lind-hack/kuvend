@@ -78,11 +78,14 @@
     font-weight: 500;
     font-size: 12.5px;
     letter-spacing: 0.01em;
-    color: var(--color-silk-3);
+    color: var(--color-silk-2);
   }
 
   /* A scribble strip: masking tape with the channel's name written on it. */
   .scribble {
+    /* Torn ends: masking tape ripped off the roll, never a pill. */
+    clip-path: polygon(0 8%, 3px 0, 100% 0, calc(100% - 2px) 22%, 100% 46%, calc(100% - 3px) 70%, 100% 100%, 2px 100%, 0 78%, 3px 52%, 0 30%);
+    transform: rotate(-0.6deg);
     background: var(--color-tape);
     color: var(--color-tape-ink);
     font-family: var(--font-label);

@@ -125,7 +125,7 @@ export function Take({ turn, cwd, delta, index, last, actions }: { turn: Turn; c
           <span className="silk">{review ? "Second listen" : MODE_INFO[turn.mode].label}</span>
           {running ? (
             <span className="flex items-center gap-1.5 text-[12.5px] text-clip">
-              <Led color="var(--color-clip)" blink /> Recording · {elapsed(turn)}
+              <Led color="var(--color-clip)" blink /> Working · {elapsed(turn)}
             </span>
           ) : (
             <span className="text-[12.5px] text-silk-3">
@@ -200,15 +200,15 @@ export function Take({ turn, cwd, delta, index, last, actions }: { turn: Turn; c
           <div className="flex flex-wrap items-center gap-2">
             {undone ? (
               <>
-                <span className="text-[13.5px] text-silk-2">Dropped. Your files are back to how they were before this take.</span>
+                <span className="text-[13.5px] text-silk-2">Undone. Your files are back to how they were before this take.</span>
                 <Button size="sm" tone="quiet" disabled={!!actions.busy} onClick={actions.onRedo} icon={actions.busy === `redo:${turn.id}` ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5" />}>
-                  Bring it back
+                  Redo
                 </Button>
               </>
             ) : (
               <>
                 <Button size="sm" disabled={!!actions.busy} onClick={actions.onUndo} icon={actions.busy === `undo:${turn.id}` ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}>
-                  Drop this take
+                  Undo this take
                 </Button>
                 {!review && actions.canReview && (
                   <Button size="sm" tone="quiet" disabled={!!actions.busy} onClick={actions.onReview} icon={actions.busy === `review:${turn.id}` ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Ear className="h-3.5 w-3.5" />}>

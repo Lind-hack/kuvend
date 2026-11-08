@@ -45,7 +45,7 @@ function Rack({ state, current, currentRunning, onOpen, onNew, onClose }: { stat
                     {shortPath(s.project).split(/[\\/]/).pop()} · {ago(s.updatedAt)}
                   </span>
                 </span>
-                {(s.id === current ? currentRunning : s.running) && <Led color="var(--color-clip)" blink label="Recording" />}
+                {(s.id === current ? currentRunning : s.running) && <Led color="var(--color-clip)" blink label="Working" />}
               </button>
             </li>
           );
@@ -148,7 +148,7 @@ export function Workspace({ id, state, onOpen, onHome, refreshState }: { id: str
   const projectName = shortPath(session.project).split(/[\\/]/).pop();
 
   return (
-    <div className="grid h-[calc(100dvh-49px)] min-h-0 grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)_minmax(340px,30vw)]">
+    <div className="grid h-dvh min-h-0 grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)_minmax(340px,30vw)]">
       {/* The rack: every session, newest first. A drawer on small screens. */}
       <aside className={cx("min-h-0 border-r border-rule bg-panel max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-30 max-lg:w-[86vw] max-lg:max-w-[320px] max-lg:shadow-[0_0_60px_rgb(0_0_0/0.6)] max-lg:transition-transform max-lg:duration-200", !rackOpen && "max-lg:-translate-x-full")}>
         <Rack state={state} current={id} currentRunning={running} onOpen={(s) => (setRackOpen(false), onOpen(s))} onNew={onHome} onClose={rackOpen ? () => setRackOpen(false) : undefined} />
@@ -157,8 +157,13 @@ export function Workspace({ id, state, onOpen, onHome, refreshState }: { id: str
 
       {/* The tape lane and the talkback composer. */}
       <main className="flex min-h-0 min-w-0 flex-col">
-        <div className="flex items-center gap-2 border-b border-rule px-3 py-2 sm:px-5">
+        <div className="flex h-[49px] shrink-0 items-center gap-2 border-b border-rule px-3 sm:px-5">
           <Button size="sm" tone="quiet" className="lg:hidden" aria-label="Sessions" onClick={() => setRackOpen(true)} icon={<Menu className="h-4 w-4" />} />
+          <button type="button" onClick={onHome} aria-label="Kuvend, back to projects" className="flex h-5 shrink-0 items-end gap-[2px] pr-1">
+            <span className="h-2 w-[4px] rounded-[1px] bg-go" />
+            <span className="h-3.5 w-[4px] rounded-[1px] bg-warn" />
+            <span className="h-5 w-[4px] rounded-[1px] bg-clip" />
+          </button>
           <h1 className="min-w-0 flex-1 truncate text-[15px] font-medium">{session.title}</h1>
           <span className="hidden items-center gap-1.5 font-mono text-[12px] text-silk-3 sm:flex">
             {projectName}
@@ -169,6 +174,18 @@ export function Workspace({ id, state, onOpen, onHome, refreshState }: { id: str
             )}
           </span>
           <Button size="sm" tone="quiet" className="lg:hidden" aria-label="Changes and run" onClick={() => setMonitorOpen(true)} icon={<PanelRight className="h-4 w-4" />} />
+          {/* The mixdown: save, with its clip light. Opens the save check. */}
+          <Button
+            size="sm"
+            onClick={() => {
+              setTab("save");
+              setDiff(null);
+              setMonitorOpen(true);
+            }}
+            icon={<Led color={turns.some((t) => t.files?.length && !t.undone) ? "var(--color-warn)" : "var(--color-go)"} />}
+          >
+            Save
+          </Button>
           <Button
             size="sm"
             tone="quiet"

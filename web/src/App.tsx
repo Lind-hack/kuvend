@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, token, type AppState } from "./api";
 import { Launch } from "./Launch";
 import { Workspace } from "./Workspace";
-import { Led } from "./ui";
+import { cx, Led } from "./ui";
 
 // Which screen: the launch screen, or one session (#/s/<id> keeps it across reloads).
 const sessionFromHash = () => location.hash.match(/^#\/s\/(s[a-z0-9]+)$/)?.[1] ?? null;
@@ -37,7 +37,7 @@ export function App() {
 
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-10 flex h-[49px] items-center gap-3 border-b border-rule bg-desk/95 px-4 backdrop-blur-sm sm:px-5">
+      <header className={cx("sticky top-0 z-10 h-[49px] items-center gap-3 border-b border-rule bg-desk px-4 sm:px-5", session ? "hidden" : "flex")}>
         <button type="button" onClick={() => open(null)} className="flex items-center gap-2.5" aria-label="Kuvend, back to projects">
           <span className="flex h-5 items-end gap-[2px]" aria-hidden>
             <span className="h-2 w-[4px] rounded-[1px] bg-go" />
