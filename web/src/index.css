@@ -1,0 +1,205 @@
+@import "@fontsource/barlow/latin-400.css";
+@import "@fontsource/barlow/latin-500.css";
+@import "@fontsource/barlow/latin-600.css";
+@import "@fontsource/barlow-semi-condensed/latin-500.css";
+@import "@fontsource/barlow-semi-condensed/latin-600.css";
+@import "@fontsource/jetbrains-mono/latin-400.css";
+@import "@fontsource/jetbrains-mono/latin-500.css";
+@import "tailwindcss";
+
+/* The Recording Console. Panels are anodized charcoal, labels are cream silkscreen, each agent is a
+   channel with its own cap colour, and one meter ramp (green, amber, red) carries every quantity. */
+@theme {
+  --color-desk: #111214;
+  --color-panel: #18191c;
+  --color-panel-2: #1f2125;
+  --color-panel-3: #272a2f;
+  --color-rule: #2c2f35;
+  --color-rule-hi: #3b3f46;
+  --color-silk: #e8e0cc;
+  --color-silk-2: #b9b3a3;
+  --color-silk-3: #8f8a7e;
+  --color-claude: #d98a63;
+  --color-codex: #8fb3d9;
+  --color-go: #7ccf8e;
+  --color-warn: #f0a63c;
+  --color-clip: #e2553f;
+  --color-tape: #d9cfb3;
+  --color-tape-ink: #2a2620;
+
+  --font-sans: "Barlow", ui-sans-serif, system-ui, sans-serif;
+  --font-label: "Barlow Semi Condensed", "Barlow", ui-sans-serif, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html,
+  body {
+    background: var(--color-desk);
+    color: var(--color-silk);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.55;
+    overflow-x: clip;
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--color-warn) 40%, transparent);
+    color: var(--color-silk);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-warn);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-rule-hi) transparent;
+    caret-color: var(--color-warn);
+  }
+  a {
+    text-underline-offset: 3px;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
+@layer components {
+  /* Silkscreen: the small condensed label printed on the panel. */
+  .silk {
+    font-family: var(--font-label);
+    font-weight: 500;
+    font-size: 12.5px;
+    letter-spacing: 0.01em;
+    color: var(--color-silk-3);
+  }
+
+  /* A scribble strip: masking tape with the channel's name written on it. */
+  .scribble {
+    background: var(--color-tape);
+    color: var(--color-tape-ink);
+    font-family: var(--font-label);
+    font-weight: 600;
+    border-radius: 2px;
+    box-shadow:
+      0 1px 0 rgb(0 0 0 / 0.5),
+      inset 0 -1px 0 rgb(0 0 0 / 0.08);
+  }
+
+  /* Agent replies, rendered from markdown. */
+  .prose-take {
+    font-size: 15px;
+    line-height: 1.65;
+    max-width: 72ch;
+    overflow-wrap: anywhere;
+  }
+  .prose-take > * + * {
+    margin-top: 0.7em;
+  }
+  .prose-take h1,
+  .prose-take h2,
+  .prose-take h3 {
+    font-weight: 600;
+    line-height: 1.3;
+    margin-top: 1.2em;
+  }
+  .prose-take h1 {
+    font-size: 1.25em;
+  }
+  .prose-take h2 {
+    font-size: 1.12em;
+  }
+  .prose-take ul,
+  .prose-take ol {
+    padding-left: 1.3em;
+  }
+  .prose-take ul {
+    list-style: square;
+  }
+  .prose-take ol {
+    list-style: decimal;
+  }
+  .prose-take li + li {
+    margin-top: 0.25em;
+  }
+  .prose-take li::marker {
+    color: var(--color-silk-3);
+  }
+  .prose-take a {
+    color: var(--color-codex);
+    text-decoration: underline;
+  }
+  .prose-take code {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    background: var(--color-panel-3);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+  .prose-take pre {
+    background: var(--color-desk);
+    border: 1px solid var(--color-rule);
+    border-radius: 4px;
+    padding: 0.8em 1em;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .prose-take pre code {
+    background: none;
+    padding: 0;
+    font-size: inherit;
+  }
+  .prose-take blockquote {
+    border-left: 1px solid var(--color-rule-hi);
+    padding-left: 1em;
+    color: var(--color-silk-2);
+  }
+  .prose-take table {
+    border-collapse: collapse;
+    font-size: 0.92em;
+  }
+  .prose-take th,
+  .prose-take td {
+    border-bottom: 1px solid var(--color-rule);
+    padding: 0.35em 0.8em 0.35em 0;
+    text-align: left;
+  }
+
+  /* A take arriving on tape slides up from the record head. */
+  .take-in {
+    animation: take-in 420ms var(--ease-out) both;
+  }
+  @keyframes take-in {
+    from {
+      transform: translateY(10px);
+      opacity: 0;
+    }
+  }
+  .led-on {
+    box-shadow:
+      0 0 0 1px rgb(0 0 0 / 0.4),
+      0 0 10px -1px currentColor;
+  }
+  .led-pulse {
+    animation: led 1.1s ease-in-out infinite;
+  }
+  @keyframes led {
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .take-in,
+    .led-pulse {
+      animation: none;
+    }
+  }
+}
