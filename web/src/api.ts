@@ -63,6 +63,15 @@ export type Warning = { level: "stop" | "check"; title: string; detail: string; 
 
 const KEY = "kuvend.token";
 
+// Opened on a phone (over Tailscale or a tunnel) rather than on the computer Kuvend runs on.
+export const onPhone = !["127.0.0.1", "localhost", "[::1]"].includes(location.hostname);
+
+// A phone that scanned the computer's code opens #pair=<code>&s=<session>.
+export function pairFromHash(): { code: string; session: string | null } | null {
+  const m = location.hash.match(/^#pair=([a-f0-9]{32})(?:&s=(s[a-z0-9]+))?$/);
+  return m ? { code: m[1], session: m[2] ?? null } : null;
+}
+
 function readToken(): string {
   const m = location.hash.match(/token=([a-f0-9]{48})/);
   if (m) {
@@ -81,7 +90,26 @@ function readToken(): string {
   }
 }
 
-export const token = readToken();
+export let token = readToken();
+
+// Trade the one-time code for this phone's own key, and keep it in this browser.
+export async function pairPhone(code: string): Promise<void> {
+  const ua = navigator.userAgent;
+  const name = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android phone" : "Phone";
+  const res = await fetch("/api/remote/pair", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, name }) }).catch(() => null);
+  if (!res) throw new ApiError(0, "Can't reach your computer. Is Kuvend still running there, with phone access on?");
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !/^[a-f0-9]{48}$/.test(data?.token ?? "")) throw new ApiError(res.status, data?.error ?? "Pairing didn't work. Show a new code on your computer.");
+  token = data.token;
+  try {
+    localStorage.setItem(KEY, token);
+  } catch {
+    /* private window: this tab still works */
+  }
+}
+
+export type RemoteDevice = { id: string; name: string; createdAt: string; lastSeenAt: string | null };
+export type RemoteStatus = { on: boolean; route: "tailscale" | "tunnel" | null; url: string | null; pairing: { expiresAt: string } | null; devices: RemoteDevice[]; you?: "laptop" | "phone" };
 
 export class ApiError extends Error {
   constructor(

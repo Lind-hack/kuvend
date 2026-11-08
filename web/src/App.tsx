@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, token, type AppState } from "./api";
+import { api, onPhone, pairFromHash, pairPhone, token, type AppState } from "./api";
 import { Launch } from "./Launch";
 import { Workspace } from "./Workspace";
 import { cx, Led } from "./ui";
@@ -7,7 +7,35 @@ import { cx, Led } from "./ui";
 // Which screen: the launch screen, or one session (#/s/<id> keeps it across reloads).
 const sessionFromHash = () => location.hash.match(/^#\/s\/(s[a-z0-9]+)$/)?.[1] ?? null;
 
+// A phone that just scanned the computer's code: trade it for this phone's key, then open the session.
+function Pairing({ code, session }: { code: string; session: string | null }) {
+  const [error, setError] = useState("");
+  useEffect(() => {
+    pairPhone(code)
+      .then(() => location.replace(`${location.pathname}${session ? `#/s/${session}` : "#"}`))
+      .then(() => location.reload())
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  }, [code, session]);
+  return (
+    <div className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-3 p-8">
+      <span className="flex h-6 items-end gap-[3px]" aria-hidden>
+        <span className="h-2.5 w-[5px] rounded-[1px] bg-go" />
+        <span className="h-4 w-[5px] rounded-[1px] bg-warn" />
+        <span className="h-6 w-[5px] rounded-[1px] bg-clip" />
+      </span>
+      <h1 className="text-[24px] font-semibold tracking-[-0.02em]">{error ? "This phone isn't paired yet." : "Pairing this phone…"}</h1>
+      <p className="text-[15px] leading-relaxed text-silk-2">{error || "Your computer keeps running the agents. This phone picks up the same session, with every skill, MCP server and hook."}</p>
+    </div>
+  );
+}
+
 export function App() {
+  const pairing = pairFromHash();
+  if (pairing) return <Pairing code={pairing.code} session={pairing.session} />;
+  return <Main />;
+}
+
+function Main() {
   const [state, setState] = useState<AppState | null>(null);
   const [error, setError] = useState("");
   const [session, setSession] = useState<string | null>(sessionFromHash);
@@ -48,14 +76,23 @@ export function App() {
         </button>
         <span className="ml-auto flex items-center gap-2 text-[12.5px] text-silk-3">
           <Led on={!error && !!state} color={error ? "var(--color-clip)" : "var(--color-go)"} />
-          {error ? "not connected" : state ? "local" : "connecting"}
+          {error ? "not connected" : state ? (onPhone ? "on your phone" : "local") : "connecting"}
         </span>
       </header>
 
       {!token ? (
         <div className="mx-auto max-w-lg p-10 text-[15px] text-silk-2">
-          <p className="mb-2 text-[20px] font-semibold text-silk">Open Kuvend from your terminal.</p>
-          Run <code className="font-mono text-silk">npx kuvend</code> and use the link it prints. The link carries a key that keeps other websites away from your agents.
+          {onPhone ? (
+            <>
+              <p className="mb-2 text-[20px] font-semibold text-silk">Pair this phone first.</p>
+              On your computer, open Kuvend, choose Continue on phone, and scan the code with this phone's camera.
+            </>
+          ) : (
+            <>
+              <p className="mb-2 text-[20px] font-semibold text-silk">Open Kuvend from your terminal.</p>
+              Run <code className="font-mono text-silk">npx kuvend</code> and use the link it prints. The link carries a key that keeps other websites away from your agents.
+            </>
+          )}
         </div>
       ) : error && !state ? (
         <div className="mx-auto max-w-lg p-10 text-[15px] text-silk-2">

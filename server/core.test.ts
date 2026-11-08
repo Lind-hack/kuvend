@@ -201,3 +201,65 @@ test("the council: link with a code, send a take with its diff, follow the room,
     fake.close();
   }
 });
+
+test("continue on phone: a one-time code pairs one phone, and a phone's key is all that works over its route", async () => {
+  const remote = await import("./remote.js");
+  // The code: once only, wrong guesses use it up, and it expires.
+  const { code } = remote.newPairingCode();
+  assert.throws(() => remote.pair("0".repeat(32), "Guess"), /doesn't match/);
+  const phone = remote.pair(code, "Ana's iPhone <script>");
+  assert.match(phone.token, /^[a-f0-9]{48}$/);
+  assert.throws(() => remote.pair(code, "Second phone"), /expired/, "a code pairs one phone only");
+  assert.equal(remote.devices().at(-1)?.name, "Ana's iPhone script", "the name is cleaned");
+  assert.ok(!fs.readFileSync(path.join(process.env.KUVEND_HOME!, "devices.json"), "utf8").includes(phone.token), "only a hash of the key is stored");
+  const second = remote.newPairingCode();
+  for (let i = 0; i < 8; i++) assert.throws(() => remote.pair("f".repeat(32), "x"));
+  assert.throws(() => remote.pair(second.code, "x"), /expired/, "too many wrong guesses kill the code");
+  remote.newPairingCode();
+  remote.__test.expirePairing();
+  assert.throws(() => remote.pair(remote.newPairingCode().code.replace(/./, "0"), "x"));
+
+  // Over the server.
+  const probe = createServer(0);
+  await new Promise<void>((r) => probe.listen(0, "127.0.0.1", r));
+  const port = (probe.address() as { port: number }).port;
+  probe.close();
+  const server = createServer(port);
+  await new Promise<void>((r) => server.listen(port, "127.0.0.1", r));
+  const laptop = accessToken();
+  const call = (p: string, host: string, tok?: string, method = "GET") =>
+    new Promise<number>((resolve) => {
+      const req = http.request({ host: "127.0.0.1", port, path: p, method, headers: { Host: host, ...(tok ? { "x-kuvend-token": tok } : {}) } }, (res) => {
+        res.resume();
+        resolve(res.statusCode ?? 0);
+      });
+      req.end(method === "POST" ? "{}" : undefined);
+    });
+  try {
+    const phoneHost = "abc-def.trycloudflare.com";
+    assert.equal(await call("/api/remote", phoneHost, phone.token), 421, "no phone route yet: the tunnel's name is refused");
+    remote.__test.route([phoneHost]);
+    assert.equal(await call("/api/remote", phoneHost, phone.token), 200, "the paired phone gets in over its route");
+    assert.equal(await call("/api/remote", phoneHost, laptop), 401, "this install's own key doesn't work over a phone route");
+    assert.equal(await call("/api/remote", phoneHost, "a".repeat(48)), 401, "an unknown key doesn't either");
+    assert.equal(await call("/api/remote/stop", phoneHost, phone.token, "POST"), 403, "a phone can't turn phone access off");
+    assert.equal(await call("/api/remote/code", `127.0.0.1:${port}`, phone.token, "POST"), 403, "or show a code to pair another phone");
+    assert.equal(await call("/api/pick-folder", phoneHost, phone.token, "POST"), 409, "the folder picker would open on the computer");
+    // A phone watching a session live: removing the phone cuts the stream at once.
+    const ended = new Promise<boolean>((resolve) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/sessions/sabcdefgh123/events", headers: { Host: phoneHost, "x-kuvend-token": phone.token } }, (res) => {
+        assert.equal(res.statusCode, 200);
+        res.resume();
+        res.on("end", () => resolve(true));
+        setTimeout(() => remote.removeDevice(phone.id), 50);
+      });
+      setTimeout(() => resolve(false), 3000);
+    });
+    assert.equal(await ended, true, "the removed phone's live stream is closed");
+    assert.equal(await call("/api/remote", phoneHost, phone.token), 401, "a removed phone is out");
+    assert.equal(await call("/api/remote/stop", `127.0.0.1:${port}`, laptop, "POST"), 200, "the laptop turns it off");
+    assert.equal(await call("/api/remote", phoneHost, laptop), 421, "and the route's name is refused again");
+  } finally {
+    server.close();
+  }
+});

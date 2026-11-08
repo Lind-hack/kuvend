@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { stopRemote } from "./remote.js";
 import { stopAll } from "./runapp.js";
 import { createServer } from "./server.js";
 import { accessToken } from "./store.js";
@@ -50,6 +51,7 @@ server.listen(port, "127.0.0.1", () => {
 
 const quit = () => {
   stopAll();
+  stopRemote(); // closes the phone route and lets the computer sleep again
   process.exit(0);
 };
 process.on("SIGINT", quit);

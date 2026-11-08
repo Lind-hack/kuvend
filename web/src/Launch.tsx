@@ -1,6 +1,7 @@
 import { ArrowRight, Check, Copy, FolderOpen, GitBranch, History, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
-import { AGENT_NAME, api, type AgentId, type AppState, type Mode, type Project, type Session } from "./api";
+import { AGENT_NAME, api, onPhone, type AgentId, type AppState, type Mode, type Project, type Session } from "./api";
+import { PhoneButton } from "./Phone";
 import { ago, Button, CAP, cx, Led, ModeSwitch, Scribble, shortPath } from "./ui";
 
 const INSTALL: Record<AgentId, { cmd: string; login: string }> = {
@@ -225,9 +226,12 @@ export function Launch({ state, onOpen, initialProject }: { state: AppState | nu
         ) : (
           <section aria-label="Open a project" className="flex flex-col gap-4">
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Button tone="primary" className="min-h-12 px-5 text-[15px]" onClick={() => void choose()} disabled={busy} icon={busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />}>
-                Choose a project folder
-              </Button>
+              {/* The folder picker opens on the computer; on a phone, paste a path or pick a recent project. */}
+              {!onPhone && (
+                <Button tone="primary" className="min-h-12 px-5 text-[15px]" onClick={() => void choose()} disabled={busy} icon={busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />}>
+                  Choose a project folder
+                </Button>
+              )}
               <form
                 className="flex min-w-0 flex-1 gap-2"
                 onSubmit={(e) => {
@@ -306,6 +310,13 @@ export function Launch({ state, onOpen, initialProject }: { state: AppState | nu
         <ChannelCheck agent="claude" info={state?.agents.claude} />
         <ChannelCheck agent="codex" info={state?.agents.codex} />
         <p className="border-t border-rule pt-3 text-[13px] text-silk-3">Kuvend runs the agents you already have, signed in as you. It never sees your logins.</p>
+        {!onPhone && (
+          <div className="flex flex-col gap-2 border-t border-rule pt-3">
+            <h3 className="text-[14px] font-medium">Your phone</h3>
+            <p className="text-[13px] text-silk-3">Pick up any session on your phone, with the same skills, MCP servers and hooks. The agents keep running here.</p>
+            <PhoneButton label className="w-full justify-center border border-rule-hi" />
+          </div>
+        )}
         <CouncilLink />
       </aside>
     </div>

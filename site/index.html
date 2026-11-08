@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <title>Kuvend: undo anything your AI agent does</title>
-    <meta name="description" content="Kuvend is a free, open-source workspace for Claude Code and Codex. Every change is a take you can undo, the other agent checks the work, and saving stops leaked keys." />
+    <meta name="description" content="Kuvend is a free, open-source workspace for Claude Code and Codex. Every change is a take you can undo, the other agent checks the work, saving stops leaked keys, and the same session continues on your phone." />
     <meta property="og:title" content="Kuvend: undo anything your AI agent does" />
     <meta property="og:description" content="Claude Code and Codex in your project, with every change on tape. Free and open source." />
     <meta property="og:image" content="https://kuvend.pages.dev/shots/workspace.webp" />
@@ -19,6 +19,7 @@
       <nav class="container" aria-label="Main">
         <a class="mark" href="#top"><span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>Kuvend</a>
         <ul>
+          <li><a href="#phone">Phone</a></li>
           <li><a href="#undo">How it works</a></li>
           <li><a href="#save">Safety</a></li>
           <li><a href="#start">Install</a></li>
@@ -45,12 +46,30 @@
         </div>
       </section>
 
+      <section class="take" id="phone" aria-labelledby="t0">
+        <div class="container">
+          <div class="split">
+            <div class="copy">
+              <h2 id="t0">Start on your laptop. Finish on your phone.</h2>
+              <p class="lede">Scan one code and the same session opens on your phone. The agents keep running on your computer, so every skill, MCP server, hook and sign-in comes with it.</p>
+              <ul class="facts">
+                <li><strong>Private by default.</strong> Through Tailscale, only your own devices can reach it. Without it, a Cloudflare tunnel that only your paired phone can use.</li>
+                <li><strong>One key per phone.</strong> The code works once. Remove a phone from your computer any time.</li>
+              </ul>
+            </div>
+            <figure class="shot tall">
+              <img src="shots/phone.webp" width="780" height="1688" loading="lazy" alt="Kuvend on a phone: the same session as on the computer, with Claude Code’s take, the Plan, Edit and Full switch, and the message box." />
+            </figure>
+          </div>
+        </div>
+      </section>
+
       <section class="take" id="undo" aria-labelledby="t1">
         <div class="container">
           <div class="split">
             <div class="copy">
               <h2 id="t1">Every message is a take. Drop the ones you don’t like.</h2>
-              <p class="lede">Before and after each message, Kuvend copies your files. Undo puts every one back exactly, and removes what the agent added.</p>
+              <p class="lede">Undo puts every file back exactly as it was before that message.</p>
             </div>
             <div class="demo" id="demo">
               <div class="demo-head"><span class="scribble"><i class="cap-claude"></i>Claude Code</span> Edit <span>done in 30s</span></div>
@@ -75,11 +94,10 @@
             <div class="copy">
               <div>
                 <h2 id="t2">Claude writes it. Codex checks it.</h2>
-                <p class="lede">One tap sends a take to the other agent for a second listen. It reads the change, can’t edit a thing, and reports real problems in plain words.</p>
+                <p class="lede">One tap sends a take to the other agent for a second listen. It reports real problems in plain words.</p>
               </div>
               <ul class="facts">
-                <li><strong>Different model, different blind spots.</strong> Each catches what the other is sure of.</li>
-                <li><strong>Read-only by design.</strong> The reviewer runs in Plan mode.</li>
+                <li><strong>Read-only by design.</strong> The reviewer runs in Plan mode, so it can’t change a thing.</li>
               </ul>
             </div>
             <figure class="shot">
@@ -94,7 +112,7 @@
           <div class="split">
             <div class="copy">
               <h2 id="t3">Run it. When it breaks, hand over the error.</h2>
-              <p class="lede">Kuvend finds how your project starts and shows the output. Errors light up, and one tap sends them to the agent.</p>
+              <p class="lede">Kuvend starts your project and shows the output. One tap sends an error to the agent.</p>
             </div>
             <figure class="shot tall">
               <img src="shots/run.webp" width="864" height="1800" loading="lazy" alt="Kuvend’s Run panel: a Node error, Cannot find module, highlighted, with a Send this error to the agent button." />
@@ -108,7 +126,7 @@
           <div class="split">
             <div class="copy">
               <h2 id="t4">Nothing leaves without a check.</h2>
-              <p class="lede">Before a save, Kuvend reads what would be committed. A key or a .env file stops the save until you’ve looked.</p>
+              <p class="lede">A key or a .env file stops the save until you’ve looked.</p>
               <ul class="facts">
                 <li><strong>Keys:</strong> OpenAI, Anthropic, GitHub, AWS, Google, Stripe, Slack and private keys.</li>
                 <li><strong>Files:</strong> .env files, and passwords inside URLs.</li>
@@ -134,12 +152,12 @@
               </div>
               <div role="listitem" class="mode is-default">
                 <h3><span class="pos">Edit</span> the default</h3>
-                <p>Edits files, and stops before a command. You see what it wanted, and can allow it.</p>
+                <p>Edits files, and asks before running a command.</p>
                 <ul><li class="yes">Reads files</li><li class="yes">Edits files</li><li class="ask">Asks before commands</li></ul>
               </div>
               <div role="listitem" class="mode is-full">
                 <h3><span class="pos">Full</span></h3>
-                <p>Does everything. For tasks you trust, best on a safe copy.</p>
+                <p>Does everything. Best on a safe copy.</p>
                 <ul><li class="yes">Reads files</li><li class="yes">Edits files</li><li class="yes">Runs commands</li></ul>
               </div>
             </div>
@@ -153,8 +171,7 @@
             <h2 id="t6">Your machine, your logins.</h2>
             <ul class="facts facts-grid">
               <li><strong>No account.</strong> Kuvend drives the claude and codex you already signed in to. It never sees your logins.</li>
-              <li><strong>Local only.</strong> It listens on 127.0.0.1, and every request needs this install’s own key.</li>
-              <li><strong>Other sites can’t reach it.</strong> Requests from other origins and other host names are refused.</li>
+              <li><strong>Local first.</strong> Every request needs this install’s key or a paired phone’s.</li>
               <li><strong>Open source.</strong> MIT licensed, every line on GitHub.</li>
             </ul>
           </div>

@@ -40,6 +40,13 @@ Keep the terminal window open while you work. `Ctrl+C` stops Kuvend and any app 
 
 **Ask the council (optional).** Link Kuvend to an [Agentic OS](https://github.com/Lind-hack/agent-dashboard) dashboard and any take can go to its Roast room. Several AIs debate whether the change is right and what should happen next, and a judge rules. The verdict shows on the take, and one tap sends it to the agent as the next message. To link, make a code in the dashboard under Settings, Kuvend, then paste the address and code on Kuvend's start screen. Kuvend sends only that take's request, the agent's reply and its diff.
 
+**Continue on your phone.** Start on your computer, keep going from your phone, mid-session. The agents keep running on your computer, so the phone gets the very same session: its history, and every skill, MCP server, hook, `CLAUDE.md`/`AGENTS.md` and sign-in the agents use there. Choose *Continue on phone* and scan the code with your phone's camera.
+- With [Tailscale](https://tailscale.com) on both devices, the connection is private between your own devices, nothing public.
+- Without it, Kuvend opens a free [Cloudflare quick tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/) (install `cloudflared` once): an HTTPS link only your paired phone can use.
+- The code works once, for ten minutes. Each paired phone gets its own key, which you can remove from the computer at any time. Over the phone route only a phone's key is accepted, and only the computer can turn phone access on or off or pair a new phone.
+- While phone access is on, Kuvend keeps the computer from sleeping. Keep it plugged in; closing a laptop lid may still put it to sleep.
+- On the phone, *Add to Home Screen* makes Kuvend open like an app.
+
 **Modes, in plain words.**
 - **Plan** looks and plans, and changes nothing.
 - **Edit** changes files, and asks before running commands. When it was stopped from running something, you see what it wanted and can *Allow and continue*.
@@ -51,7 +58,7 @@ Keep the terminal window open while you work. `Ctrl+C` stops Kuvend and any app 
 
 ## Security
 
-- Listens on `127.0.0.1` only.
+- Listens on `127.0.0.1` only, unless you turn on phone access (then also on your private Tailscale address, or through a Cloudflare tunnel, for paired phones only).
 - Every request needs this install's random key. The key is in the link Kuvend prints, and the page keeps it in your browser.
 - Requests from other websites, and from other host names pointing at your machine (DNS rebinding), are refused.
 - Agent replies are rendered as sanitized markdown. A page an agent quotes can't run script in Kuvend's tab.

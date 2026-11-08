@@ -1,6 +1,7 @@
 import { ArrowUp, GitBranch, LoaderCircle, Menu, PanelRight, Plus, Square, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AGENT_NAME, api, type AgentId, type AppState, type FileChange, type Mode } from "./api";
+import { AGENT_NAME, api, onPhone, type AgentId, type AppState, type FileChange, type Mode } from "./api";
+import { PhoneButton } from "./Phone";
 import { Monitor, type Tab } from "./Monitor";
 import { Take } from "./Take";
 import { ago, Button, CAP, cx, Kbd, Led, ModeSwitch, shortPath } from "./ui";
@@ -188,6 +189,7 @@ export function Workspace({ id, state, onOpen, onHome, refreshState }: { id: str
           >
             Save
           </Button>
+          {!onPhone && <PhoneButton session={id} />}
           <Button
             size="sm"
             tone="quiet"

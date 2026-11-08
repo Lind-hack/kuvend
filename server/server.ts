@@ -8,12 +8,15 @@ import * as git from "./git.js";
 import { run } from "./proc.js";
 import { detectCommand, errorContext, onRunState, runState, startApp, stopApp } from "./runapp.js";
 import * as council from "./council.js";
+import * as remote from "./remote.js";
 import { checkDiff } from "./safety.js";
 import * as sessions from "./sessions.js";
 import { accessToken, deleteSession, listSessions, readSession, readSettings, recentProjects, saveSettings, type AgentId, type Mode } from "./store.js";
 
-// Kuvend's local server. It only listens on 127.0.0.1, and every request must carry the install's
-// token and come from Kuvend's own page: a website you visit can't reach your agents through it.
+// Kuvend's local server. It listens on 127.0.0.1, and every request must carry the install's token and
+// come from Kuvend's own page: a website you visit can't reach your agents through it. When phone access
+// is on (remote.ts), the same page is also served on a private Tailscale address or a Cloudflare tunnel,
+// where only a paired phone's key is accepted.
 
 // Built: dist/server → dist/web. From source (npm run dev): server/ → dist/web.
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -115,6 +118,14 @@ async function inspect(dir: string) {
 }
 
 type Handler = (req: http.IncomingMessage, m: RegExpMatchArray, url: URL) => Promise<unknown>;
+// Who sent this request: the laptop's own page (this install's key, on 127.0.0.1) or a paired phone.
+const caller = new WeakMap<http.IncomingMessage, "laptop" | "phone">();
+const phoneOf = new WeakMap<http.IncomingMessage, string>();
+const laptopOnly = (req: http.IncomingMessage) => {
+  if (caller.get(req) !== "laptop") throw new HttpError(403, "Only the computer Kuvend runs on can do this.");
+};
+// The port and request handler the server runs with, so phone access can serve the same page.
+const serving: { port: number; handler: http.RequestListener | null } = { port: 0, handler: null };
 const routes: [string, RegExp, Handler][] = [];
 const route = (method: string, pattern: string, h: Handler) => routes.push([method, new RegExp(`^${pattern}$`), h]);
 
@@ -166,9 +177,43 @@ route("POST", "/api/settings", async (req) => {
   return { models: next.models, council: next.council?.url ?? null };
 });
 
-route("POST", "/api/pick-folder", async () => {
+route("POST", "/api/pick-folder", async (req) => {
+  // The folder picker opens on the computer, so a phone would wait on a window nobody can see.
+  if (caller.get(req) !== "laptop") throw new HttpError(409, "Choose the folder on your computer, or paste its path here.");
   const p = await pickFolder();
   return { path: p, project: p ? await inspect(p) : null };
+});
+
+// ---------- continue on your phone ----------
+route("GET", "/api/remote", async (req) => ({ ...remote.status(), you: caller.get(req) }));
+route("POST", "/api/remote/start", async (req) => {
+  laptopOnly(req);
+  const want = str((await body(req)).route);
+  try {
+    return await remote.startRemote(serving.port, serving.handler!, want === "tailscale" || want === "tunnel" ? want : "auto");
+  } catch (e) {
+    throw new HttpError(e instanceof remote.RemoteError ? 409 : 500, e instanceof Error ? e.message : String(e));
+  }
+});
+route("POST", "/api/remote/stop", async (req) => {
+  laptopOnly(req);
+  return remote.stopRemote();
+});
+route("POST", "/api/remote/code", async (req) => {
+  laptopOnly(req);
+  const s = remote.status();
+  if (!s.on || !s.url) throw new HttpError(409, "Turn on phone access first");
+  const { code, expiresAt } = remote.newPairingCode();
+  return { url: s.url, code, expiresAt };
+});
+route("DELETE", "/api/remote/devices/(d[0-9a-f]{10})", async (req, m) => {
+  laptopOnly(req);
+  try {
+    remote.removeDevice(m[1]);
+  } catch (e) {
+    throw new HttpError(404, e instanceof Error ? e.message : String(e));
+  }
+  return remote.status();
 });
 
 route("POST", "/api/project/inspect", async (req) => inspect(folder((await body(req)).path)));
@@ -283,7 +328,7 @@ route("POST", "/api/sessions/(s[a-z0-9]+)/merge", async (_r, m) => {
 
 // ---------- the server ----------
 
-const MIME: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2", ".json": "application/json", ".ico": "image/x-icon", ".webp": "image/webp" };
+const MIME: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2", ".json": "application/json", ".ico": "image/x-icon", ".webp": "image/webp", ".webmanifest": "application/manifest+json" };
 
 function serveStatic(res: http.ServerResponse, pathname: string) {
   const rel = decodeURIComponent(pathname).replace(/^\/+/, "");
@@ -308,26 +353,53 @@ const same = (a: string, b: string) => a.length === b.length && crypto.timingSaf
 export function createServer(port: number) {
   const token = accessToken();
   const hosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
-  return http.createServer(async (req, res) => {
+  const handler: http.RequestListener = async (req, res) => {
     const url = new URL(req.url ?? "/", `http://127.0.0.1:${port}`);
-    // A name that resolves to 127.0.0.1 (DNS rebinding) still carries its own Host header: refuse it.
-    if (!hosts.has(req.headers.host ?? "")) return res.writeHead(421).end();
+    const host = (req.headers.host ?? "").toLowerCase();
+    const local = hosts.has(host);
+    // A name that resolves here (DNS rebinding) still carries its own Host header: refuse it. The only
+    // other names answered are this machine's own phone routes, while phone access is on.
+    if (!local && !remote.isRemoteHost(host)) return res.writeHead(421).end();
     if (!url.pathname.startsWith("/api/")) return serveStatic(res, url.pathname);
 
     const origin = req.headers.origin;
-    if (origin && !hosts.has(origin.replace(/^https?:\/\//, ""))) return res.writeHead(403).end();
+    if (origin) {
+      const o = origin.replace(/^https?:\/\//, "").toLowerCase();
+      if (!hosts.has(o) && !remote.isRemoteHost(o)) return res.writeHead(403).end();
+    }
+
+    // Pairing is the one call a phone makes before it has a key: it proves itself with the code.
+    if (url.pathname === "/api/remote/pair" && req.method === "POST") {
+      try {
+        const b = await body(req);
+        const out = remote.pair(str(b.code, 64), str(b.name, 80));
+        return res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" }).end(JSON.stringify(out));
+      } catch (e) {
+        return res.writeHead(e instanceof remote.RemoteError ? 403 : 400, { "Content-Type": "application/json" }).end(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }));
+      }
+    }
+
     const given = String(req.headers["x-kuvend-token"] ?? url.searchParams.get("token") ?? "");
-    if (!same(given, token)) return res.writeHead(401, { "Content-Type": "application/json" }).end('{"error":"Open Kuvend from the link it printed when it started"}');
+    // On 127.0.0.1 this install's key works; over a phone route only a paired phone's key does.
+    const device = local && same(given, token) ? null : remote.deviceFor(given);
+    const who = device ? "phone" : local && same(given, token) ? "laptop" : null;
+    if (device) phoneOf.set(req, device);
+    if (!who) return res.writeHead(401, { "Content-Type": "application/json" }).end(JSON.stringify({ error: local ? "Open Kuvend from the link it printed when it started" : "This phone isn't paired, or was removed. Scan the code on your computer again." }));
+    caller.set(req, who);
 
     // Live updates for one session: turns, streaming text and the app's output.
     const ev = url.pathname.match(/^\/api\/sessions\/(s[a-z0-9]+)\/events$/);
     if (ev && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-store", Connection: "keep-alive" });
+      res.flushHeaders(); // open the stream now, not on the first update
       const send = (msg: unknown) => res.write(`data: ${JSON.stringify(msg)}\n\n`);
       const offTurns = sessions.subscribe(ev[1], send);
       const offRun = onRunState(ev[1], (state) => send({ type: "run", state }));
       const poll = setInterval(() => res.write(": ping\n\n"), 15_000);
+      const device = phoneOf.get(req);
+      const untrack = device ? remote.trackStream(device, () => res.end()) : () => {};
       req.on("close", () => {
+        untrack();
         offTurns();
         offRun();
         clearInterval(poll);
@@ -348,5 +420,8 @@ export function createServer(port: number) {
       return;
     }
     res.writeHead(404, { "Content-Type": "application/json" }).end('{"error":"not found"}');
-  });
+  };
+  serving.port = port;
+  serving.handler = handler;
+  return http.createServer(handler);
 }
