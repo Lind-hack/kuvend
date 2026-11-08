@@ -41,6 +41,18 @@ export function useSession(id: string | null) {
     });
   }, [id, reload]);
 
+  // The live stream can miss a frame (a reconnect, a sleeping laptop). While a take runs, re-read the
+  // record every few seconds, and once more when it stops, so the page never stays stale.
+  const running = !!data?.running;
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => void reload(), 4000);
+    return () => {
+      clearInterval(t);
+      void reload();
+    };
+  }, [running, reload]);
+
   return { data, error, reload, setData };
 }
 

@@ -54,7 +54,7 @@ export function DiffView({ sessionId, from, to, file, onBack }: { sessionId: str
 function Changes({ session, version, openFile }: { session: Session; version: number; openFile: (f: FileChange, from: string, to: string) => void }) {
   const [data, setData] = useState<{ from: string | null; to: string | null; files: FileChange[] } | null>(null);
   // Re-read whenever a take finishes, is dropped or comes back.
-  const key = session.turns.map((t) => `${t.id}:${t.status}:${t.undone ? 1 : 0}`).join(",");
+  const key = session.turns.map((t) => `${t.id}:${t.status}:${t.after ?? ""}:${t.undone ? 1 : 0}`).join(",");
   useEffect(() => {
     api<{ from: string | null; to: string | null; files: FileChange[] }>(`/api/sessions/${session.id}/changes`)
       .then(setData)
