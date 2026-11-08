@@ -1,6 +1,6 @@
-import { AlertTriangle, ChevronRight, Ear, LoaderCircle, RotateCcw, RotateCw, ShieldAlert, Terminal } from "lucide-react";
-import { useState } from "react";
-import { AGENT_NAME, MODE_INFO, type FileChange, type Item, type Turn } from "./api";
+import { AlertTriangle, ChevronRight, Ear, ExternalLink, Gavel, LoaderCircle, RotateCcw, RotateCw, ShieldAlert, Terminal } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AGENT_NAME, MODE_INFO, type Council, type FileChange, type Item, type Turn } from "./api";
 import { renderMarkdown } from "./md";
 import { Button, CAP, cx, Led, Meter, Scribble } from "./ui";
 
@@ -83,8 +83,66 @@ function elapsed(t: Turn) {
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
 }
 
+// The council's debate on this take: where it stands, then the judge's decision and one tap to act on it.
+function CouncilCard({ council, agent, busy, onRefresh, onApply }: { council: Council; agent: Turn["agent"]; busy: string; onRefresh: () => void; onApply: () => void }) {
+  const done = council.status === "done";
+  const stopped = ["cancelled", "refused", "failed"].includes(council.status);
+  const refresh = useRef(onRefresh);
+  refresh.current = onRefresh;
+  useEffect(() => {
+    if (done || stopped) return;
+    const t = setInterval(() => refresh.current(), 8000);
+    return () => clearInterval(t);
+  }, [done, stopped]);
+  const v = council.verdict;
+  const stage = council.status === "queued" ? "Waiting for a seat at the table" : council.status === "evidence" ? "Reading the change" : council.status === "judging" ? `The judge is scoring round ${council.rounds}` : `Debating, round ${Math.max(1, council.rounds)} of up to 3`;
+  return (
+    <div className="flex flex-col gap-3 rounded-[6px] border border-warn/35 bg-panel p-4">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <Gavel className="h-4 w-4 text-warn" aria-hidden />
+        <span className="font-medium">The council</span>
+        {!done && !stopped && (
+          <span className="flex items-center gap-1.5 text-[13px] text-silk-2">
+            <Led color="var(--color-warn)" blink /> {stage}
+            {council.agreement !== null && <span className="font-mono text-[12px]"> · {council.agreement}% agree</span>}
+          </span>
+        )}
+        <a href={council.url} target="_blank" rel="noreferrer" className="ml-auto inline-flex items-center gap-1 text-[13px] text-codex hover:underline">
+          Watch the debate <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+        </a>
+      </div>
+      {stopped && <p className="text-[14px] text-clip">The room {council.status === "refused" ? "was refused" : "stopped"}{council.error ? `: ${council.error}` : "."}</p>}
+      {!done && !stopped && council.error && <p className="text-[13px] text-clip">{council.error}</p>}
+      {done && v && (
+        <>
+          <p className="text-[17px] leading-snug font-semibold">{v.decision ?? v.recommendation}</p>
+          {v.next_step && <p className="text-[14px] text-silk-2">Next: {v.next_step}</p>}
+          {v.dissent.length > 0 && (
+            <ul className="list-[square] pl-5 text-[13.5px] text-silk-2">
+              {v.dissent.slice(0, 3).map((d, i) => (
+                <li key={i}>{d}</li>
+              ))}
+            </ul>
+          )}
+          <p className="text-[12.5px] text-silk-3">
+            {v.outcome}
+            {v.confidence !== null ? `, ${v.confidence}% confident` : ""}, judged by {v.judge}
+          </p>
+          <Button size="sm" tone="primary" className="self-start" disabled={!!busy} onClick={onApply}>
+            Send the verdict to {AGENT_NAME[agent]}
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
 type Actions = {
   busy: string;
+  councilLinked: boolean;
+  onCouncil: () => void;
+  onCouncilRefresh: () => void;
+  onCouncilApply: () => void;
   onUndo: () => void;
   onRedo: () => void;
   onReview: () => void;
@@ -210,6 +268,11 @@ export function Take({ turn, cwd, delta, index, last, actions }: { turn: Turn; c
                 <Button size="sm" disabled={!!actions.busy} onClick={actions.onUndo} icon={actions.busy === `undo:${turn.id}` ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}>
                   Undo this take
                 </Button>
+                {!review && actions.councilLinked && !turn.council && (
+                  <Button size="sm" tone="quiet" disabled={!!actions.busy} onClick={actions.onCouncil} icon={actions.busy === `council:${turn.id}` ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Gavel className="h-3.5 w-3.5" />}>
+                    Ask the council
+                  </Button>
+                )}
                 {!review && actions.canReview && (
                   <Button size="sm" tone="quiet" disabled={!!actions.busy} onClick={actions.onReview} icon={actions.busy === `review:${turn.id}` ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Ear className="h-3.5 w-3.5" />}>
                     Second listen from {AGENT_NAME[turn.agent === "claude" ? "codex" : "claude"]}
@@ -219,6 +282,7 @@ export function Take({ turn, cwd, delta, index, last, actions }: { turn: Turn; c
             )}
           </div>
         )}
+        {turn.council && <CouncilCard council={turn.council} agent={turn.agent} busy={actions.busy} onRefresh={actions.onCouncilRefresh} onApply={actions.onCouncilApply} />}
       </div>
     </article>
   );

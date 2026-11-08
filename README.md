@@ -38,6 +38,8 @@ Keep the terminal window open while you work. `Ctrl+C` stops Kuvend and any app 
 
 **Safe copies.** Start a session on a safe copy and the agent works in a separate git worktree on its own branch. Your folder stays untouched until you *bring the copy back*, and a conflict is aborted rather than left half-merged.
 
+**Ask the council (optional).** Link Kuvend to an [Agentic OS](https://github.com/Lind-hack/agent-dashboard) dashboard and any take can go to its Roast room. Several AIs debate whether the change is right and what should happen next, and a judge rules. The verdict shows on the take, and one tap sends it to the agent as the next message. To link, make a code in the dashboard under Settings, Kuvend, then paste the address and code on Kuvend's start screen. Kuvend sends only that take's request, the agent's reply and its diff.
+
 **Modes, in plain words.**
 - **Plan** looks and plans, and changes nothing.
 - **Edit** changes files, and asks before running commands. When it was stopped from running something, you see what it wanted and can *Allow and continue*.

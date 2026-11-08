@@ -145,3 +145,59 @@ test("agent errors are explained in plain words", async () => {
   assert.match(explain("Your workspace is out of credits."), /usage limit/);
   assert.equal(explain("something odd"), "something odd");
 });
+
+test("the council: link with a code, send a take with its diff, follow the room, and turn the verdict into the next message", async () => {
+  const council = await import("./council.js");
+  const { saveSession } = await import("./store.js");
+  // A fake Agentic OS dashboard.
+  let asked: any = null;
+  let status = "debating";
+  const fake = http.createServer((req, res) => {
+    if (req.headers.authorization !== "Bearer kvd_u_0123456789abcdef_secretsecretsecretsecret") return res.writeHead(401).end("{}");
+    let body = "";
+    req.on("data", (d) => (body += d));
+    req.on("end", () => {
+      if (req.method === "POST" && req.url === "/api/kuvend/rooms") {
+        asked = JSON.parse(body);
+        return res.writeHead(200, { "Content-Type": "application/json" }).end('{"id":"R-ABC123","url":"/room/R-ABC123"}');
+      }
+      const done = status === "done";
+      res.writeHead(200, { "Content-Type": "application/json" }).end(
+        JSON.stringify({ id: "R-ABC123", status, rounds: done ? 2 : 1, agreement: done ? 85 : 40, verdict: done ? { outcome: "consensus", decision: "Keep it, add a test for the empty list", recommendation: "", next_step: "Write the test", actions: [], dissent: ["Check the total on an empty list"], confidence: 80, judge: "Gemini" } : null }),
+      );
+    });
+  });
+  await new Promise<void>((r) => fake.listen(0, "127.0.0.1", r));
+  const base = `http://127.0.0.1:${(fake.address() as { port: number }).port}`;
+  try {
+    await assert.rejects(council.link(base, "kvd_u_0123456789abcdef_wrongwrongwrongwrongwrong"), /didn't accept/);
+    assert.equal(council.councilLinked(), null, "a bad code isn't kept");
+    await assert.rejects(council.link("http://example.com", "kvd_owner_secretsecretsecretsecret"), /https/);
+    await council.link(base, "kvd_u_0123456789abcdef_secretsecretsecretsecret");
+    assert.equal(council.councilLinked(), base);
+
+    const dir = project();
+    await git.init(dir);
+    const before = await git.snapshot(dir, "c/before");
+    fs.writeFileSync(path.join(dir, "app.js"), "console.log('v2')\n");
+    const after = await git.snapshot(dir, "c/after");
+    const now = new Date().toISOString();
+    saveSession({ id: "scouncil0001", title: "t", project: dir, cwd: dir, agent: "claude", mode: "edit", agentSessions: {}, createdAt: now, updatedAt: now, turns: [{ id: "tcouncil0001", kind: "chat", agent: "claude", mode: "edit", prompt: "Print v2", status: "done", startedAt: now, before, after, items: [{ kind: "text", text: "Done, it prints v2." }] }] });
+
+    const t = await council.ask("scouncil0001", "tcouncil0001");
+    assert.equal(t.council?.roomId, "R-ABC123");
+    assert.equal(t.council?.url, `${base}/room/R-ABC123`);
+    assert.match(asked.task, /Print v2/);
+    assert.match(asked.context, /\+console\.log\('v2'\)/, "the diff is the evidence");
+
+    assert.equal((await council.refresh("scouncil0001", "tcouncil0001")).council?.status, "debating");
+    status = "done";
+    const done = await council.refresh("scouncil0001", "tcouncil0001");
+    assert.equal(done.council?.verdict?.decision, "Keep it, add a test for the empty list");
+    assert.match(council.verdictPrompt(done), /Keep it, add a test.*\n.*Write the test/s);
+    council.unlink();
+    assert.equal(council.councilLinked(), null);
+  } finally {
+    fake.close();
+  }
+});

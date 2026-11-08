@@ -306,7 +306,59 @@ export function Launch({ state, onOpen, initialProject }: { state: AppState | nu
         <ChannelCheck agent="claude" info={state?.agents.claude} />
         <ChannelCheck agent="codex" info={state?.agents.codex} />
         <p className="border-t border-rule pt-3 text-[13px] text-silk-3">Kuvend runs the agents you already have, signed in as you. It never sees your logins.</p>
+        <CouncilLink />
       </aside>
+    </div>
+  );
+}
+
+// The optional link to an Agentic OS dashboard, whose Roast room can debate a take.
+export function CouncilLink() {
+  const [linked, setLinked] = useState<string | null | undefined>(undefined);
+  const [url, setUrl] = useState("");
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    api<{ council?: string | null }>("/api/settings")
+      .then((s) => setLinked(s.council ?? null))
+      .catch(() => setLinked(null));
+  }, []);
+  async function save() {
+    setBusy(true);
+    setError("");
+    try {
+      const r = await api<{ url: string }>("/api/council/link", { body: { url, code } });
+      setLinked(r.url);
+      setCode("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+    setBusy(false);
+  }
+  return (
+    <div className="flex flex-col gap-2.5 border-t border-rule pt-3">
+      <h3 className="text-[14px] font-medium">The council</h3>
+      {linked === undefined ? null : linked ? (
+        <>
+          <p className="flex items-center gap-1.5 text-[13px] text-silk-2">
+            <Led /> Linked to <span className="truncate font-mono text-[12px]">{linked.replace(/^https?:\/\//, "")}</span>
+          </p>
+          <Button size="sm" tone="quiet" className="self-start" onClick={() => void api("/api/council/link", { method: "DELETE" }).then(() => setLinked(null))}>
+            Unlink
+          </Button>
+        </>
+      ) : (
+        <>
+          <p className="text-[13px] text-silk-3">Optional. Link your Agentic OS dashboard and any take can go to its Roast room: several AIs debate it and a judge rules.</p>
+          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://your-dashboard" aria-label="Dashboard address" className="min-h-9 rounded-[4px] border border-rule bg-desk px-2.5 font-mono text-[12.5px] outline-none placeholder:font-sans placeholder:text-silk-3 focus:border-silk-3" />
+          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Link code (kvd_…)" aria-label="Link code" type="password" className="min-h-9 rounded-[4px] border border-rule bg-desk px-2.5 font-mono text-[12.5px] outline-none placeholder:font-sans placeholder:text-silk-3 focus:border-silk-3" />
+          <Button size="sm" disabled={busy || !url.trim() || !code.trim()} onClick={() => void save()} icon={busy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : undefined}>
+            Link
+          </Button>
+          {error && <p className="text-[13px] text-clip">{error}</p>}
+        </>
+      )}
     </div>
   );
 }

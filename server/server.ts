@@ -7,6 +7,7 @@ import { detectAgents, modelSuggestions } from "./agents.js";
 import * as git from "./git.js";
 import { run } from "./proc.js";
 import { detectCommand, errorContext, onRunState, runState, startApp, stopApp } from "./runapp.js";
+import * as council from "./council.js";
 import { checkDiff } from "./safety.js";
 import * as sessions from "./sessions.js";
 import { accessToken, deleteSession, listSessions, readSession, readSettings, recentProjects, saveSettings, type AgentId, type Mode } from "./store.js";
@@ -125,11 +126,44 @@ route("GET", "/api/state", async () => ({
     .map((s) => ({ id: s.id, title: s.title, project: s.project, agent: s.agent, branch: s.branch, turns: s.turns.length, running: sessions.isRunning(s.id), updatedAt: s.updatedAt })),
 }));
 
-route("GET", "/api/settings", async () => ({ ...readSettings(), suggestions: modelSuggestions() }));
+// Never send the link code back to the page: it only needs to know whether a link exists.
+route("GET", "/api/settings", async () => ({ models: readSettings().models, council: council.councilLinked(), suggestions: modelSuggestions() }));
+
+route("POST", "/api/council/link", async (req) => {
+  const b = await body(req);
+  try {
+    return await council.link(str(b.url, 500), str(b.code, 200));
+  } catch (e) {
+    throw new HttpError(400, e instanceof Error ? e.message : String(e));
+  }
+});
+route("DELETE", "/api/council/link", async () => {
+  council.unlink();
+  return { ok: true };
+});
+
+route("POST", "/api/sessions/(s[a-z0-9]+)/turns/(t[a-z0-9]+)/council", async (_r, m) => {
+  try {
+    return await council.ask(m[1], m[2]);
+  } catch (e) {
+    throw new HttpError(400, e instanceof Error ? e.message : String(e));
+  }
+});
+route("GET", "/api/sessions/(s[a-z0-9]+)/turns/(t[a-z0-9]+)/council", async (_r, m) => council.refresh(m[1], m[2]));
+route("POST", "/api/sessions/(s[a-z0-9]+)/turns/(t[a-z0-9]+)/council/apply", async (_r, m) => {
+  const t = session(m[1]).turns.find((x) => x.id === m[2]);
+  if (!t) throw new HttpError(404, "No such take");
+  try {
+    return await sessions.send(m[1], { prompt: council.verdictPrompt(t), agent: t.agent });
+  } catch (e) {
+    throw new HttpError(400, e instanceof Error ? e.message : String(e));
+  }
+});
 route("POST", "/api/settings", async (req) => {
   const b = await body(req);
   const models = b.models && typeof b.models === "object" ? (b.models as Record<string, unknown>) : {};
-  return saveSettings({ models: Object.fromEntries(Object.entries(models).filter(([k, v]) => AGENTS.includes(k as AgentId) && typeof v === "string").map(([k, v]) => [k, String(v).trim()])) });
+  const next = saveSettings({ models: Object.fromEntries(Object.entries(models).filter(([k, v]) => AGENTS.includes(k as AgentId) && typeof v === "string").map(([k, v]) => [k, String(v).trim()])) });
+  return { models: next.models, council: next.council?.url ?? null };
 });
 
 route("POST", "/api/pick-folder", async () => {

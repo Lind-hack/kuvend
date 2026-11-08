@@ -56,7 +56,7 @@ function Rack({ state, current, currentRunning, onOpen, onNew, onClose }: { stat
 }
 
 export function Workspace({ id, state, onOpen, onHome, refreshState }: { id: string; state: AppState | null; onOpen: (id: string) => void; onHome: () => void; refreshState: () => void }) {
-  const { data, error } = useSession(id);
+  const { data, error, reload } = useSession(id);
   const [text, setText] = useState("");
   const [agent, setAgent] = useState<AgentId>("claude");
   const [mode, setMode] = useState<Mode>("edit");
@@ -69,12 +69,14 @@ export function Workspace({ id, state, onOpen, onHome, refreshState }: { id: str
   const [monitorOpen, setMonitorOpen] = useState(false);
   const [models, setModels] = useState<Partial<Record<AgentId, string>>>({});
   const [suggest, setSuggest] = useState<Partial<Record<AgentId, string[]>>>({});
+  const [councilUrl, setCouncilUrl] = useState<string | null>(null);
   const lane = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    api<{ models: Partial<Record<AgentId, string>>; suggestions?: Partial<Record<AgentId, string[]>> }>("/api/settings")
+    api<{ models: Partial<Record<AgentId, string>>; council?: string | null; suggestions?: Partial<Record<AgentId, string[]>> }>("/api/settings")
       .then((s) => {
         setModels(s.models ?? {});
+        setCouncilUrl(s.council ?? null);
         setSuggest(s.suggestions ?? {});
       })
       .catch(() => {});
@@ -215,6 +217,13 @@ export function Workspace({ id, state, onOpen, onHome, refreshState }: { id: str
                   actions={{
                     busy,
                     canReview,
+                    councilLinked: !!councilUrl,
+                    onCouncil: () => void act(`council:${t.id}`, async () => {
+                      await api(`/api/sessions/${id}/turns/${t.id}/council`, { body: {} });
+                      await reload();
+                    }),
+                    onCouncilRefresh: () => void api(`/api/sessions/${id}/turns/${t.id}/council`).then(() => reload()),
+                    onCouncilApply: () => void act("send", () => api(`/api/sessions/${id}/turns/${t.id}/council/apply`, { body: {} })),
                     onUndo: () => void act(`undo:${t.id}`, () => api(`/api/sessions/${id}/turns/${t.id}/undo`, { body: {} })),
                     onRedo: () => void act(`redo:${t.id}`, () => api(`/api/sessions/${id}/turns/${t.id}/redo`, { body: {} })),
                     onReview: () => void act(`review:${t.id}`, () => api(`/api/sessions/${id}/turns/${t.id}/review`, { body: {} })),

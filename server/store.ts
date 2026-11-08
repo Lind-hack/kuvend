@@ -36,6 +36,18 @@ export type Turn = {
   items: Item[];
   files?: FileChange[];
   costUsd?: number;
+  council?: Council; // the take was put before an Agentic OS Roast room
+};
+
+export type Council = {
+  roomId: string;
+  url: string; // the room on the dashboard
+  status: string; // queued, debating, judging, done, cancelled, refused, failed
+  rounds: number;
+  agreement: number | null;
+  verdict?: { outcome: string; decision: string | null; recommendation: string; next_step: string; actions: string[]; dissent: string[]; confidence: number | null; judge: string } | null;
+  error?: string;
+  askedAt: string;
 };
 
 export type Session = {
@@ -97,14 +109,16 @@ export function deleteSession(id: string) {
 }
 
 // Settings that apply to every session: which model each agent uses (blank = the CLI's own default).
-export type Settings = { models: Partial<Record<AgentId, string>> };
+export type Settings = { models: Partial<Record<AgentId, string>>; council?: { url: string; code: string } };
 const settingsFile = () => path.join(home(), "settings.json");
 const MODEL_RE = /^[\w.:/-]{1,80}$/;
 export function readSettings(): Settings {
   try {
     const v = JSON.parse(fs.readFileSync(settingsFile(), "utf8"));
     const models = Object.fromEntries(Object.entries(v?.models ?? {}).filter(([k, m]) => (k === "claude" || k === "codex") && typeof m === "string" && MODEL_RE.test(m)));
-    return { models };
+    const c = v?.council;
+    const council = c && typeof c.url === "string" && typeof c.code === "string" ? { url: c.url, code: c.code } : undefined;
+    return { models, council };
   } catch {
     return { models: {} };
   }

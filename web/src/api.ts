@@ -27,6 +27,18 @@ export type Turn = {
   items: Item[];
   files?: FileChange[];
   costUsd?: number;
+  council?: Council;
+};
+
+export type Council = {
+  roomId: string;
+  url: string;
+  status: string;
+  rounds: number;
+  agreement: number | null;
+  verdict?: { outcome: string; decision: string | null; recommendation: string; next_step: string; actions: string[]; dissent: string[]; confidence: number | null; judge: string } | null;
+  error?: string;
+  askedAt: string;
 };
 
 export type Session = {
