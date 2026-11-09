@@ -56,15 +56,24 @@ export type Session = {
   origin?: { agent: AgentId; id: string; imported: number };
   handoff?: { from: string; at: string; project: string };
   sentTo?: { peer: string; name: string; remoteId: string; url: string; at: string };
+  mirrorOf?: MirrorOf;
 };
+// A copy this server keeps of a chat on another computer (your laptop); taken over when that one is off.
+export type MirrorOf = { name: string; at: string; takenAt?: string };
 
 export type Project = { path: string; name: string; repo: boolean; commits: boolean; branch: string | null; run: string | null; notes: boolean };
-export type SessionSummary = { id: string; title: string; project: string; agent: AgentId; branch?: string; turns: number; running: boolean; updatedAt: string; from: string | null; sentTo: { name: string; url: string } | null };
+export type SessionSummary = { id: string; title: string; project: string; agent: AgentId; branch?: string; turns: number; running: boolean; updatedAt: string; from: string | null; sentTo: { name: string; url: string } | null; mirrorOf?: MirrorOf | null };
 export type AppState = { agents: Record<AgentId, { installed: boolean; version?: string }>; projects: Project[]; sessions: SessionSummary[]; machine: string };
 // A Claude Code or Codex chat from the terminal (or their apps) on this computer.
 export type Chat = { agent: AgentId; id: string; cwd: string; title: string; last: string; updatedAt: string; size: number; here: boolean; session: string | null };
 // Another computer running Kuvend, usually a server that stays on.
-export type Peer = { id: string; name: string; url: string; addedAt: string };
+export type Peer = { id: string; name: string; url: string; addedAt: string; role: "server" | "laptop" };
+
+// While a chat on another computer is open (the laptop's, seen from the server's app), its calls go
+// through this machine: /api/peers/<id>/proxy/...
+let remoteBase = "";
+export const setRemote = (peer: string | null) => void (remoteBase = peer ? `/api/peers/${peer}/proxy` : "");
+const routed = (path: string) => (remoteBase && /^\/api\/(sessions|settings|project)(\/|$|\?)/.test(path) ? `${remoteBase}${path.slice(4)}` : path);
 export type RunState = { running: boolean; command: string | null; url: string | null; lines: { at: number; text: string; error: boolean }[]; exitCode: number | null; installing: boolean };
 export type Warning = { level: "stop" | "check"; title: string; detail: string; file?: string };
 
@@ -133,7 +142,7 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
-  const res = await fetch(path, {
+  const res = await fetch(routed(path), {
     method: init.method ?? (init.body === undefined ? "GET" : "POST"),
     headers: { "x-kuvend-token": token, ...(init.body === undefined ? {} : { "Content-Type": "application/json" }) },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
@@ -147,7 +156,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
 export type LiveMessage = { type: "turn"; turn: Turn; ended?: boolean } | { type: "delta"; turn: string; text: string } | { type: "run"; state: RunState };
 
 export function events(sessionId: string, onMessage: (m: LiveMessage) => void): () => void {
-  const es = new EventSource(`/api/sessions/${sessionId}/events?token=${token}`);
+  const es = new EventSource(routed(`/api/sessions/${sessionId}/events?token=${token}`));
   es.onmessage = (e) => {
     try {
       onMessage(JSON.parse(e.data));

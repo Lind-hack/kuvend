@@ -1,7 +1,9 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { autostartOn, setAutostart } from "./autostart.js";
 import { listChats } from "./chats.js";
+import { startMirroring } from "./mirror.js";
 import { keptRoute, startRemote, stopRemote } from "./remote.js";
 import { stopAll } from "./runapp.js";
 import { createServer, requestHandler } from "./server.js";
@@ -13,7 +15,7 @@ import { accessToken, readRunning, writeRunning } from "./store.js";
 // kuvend handoff [--to name] open the terminal chat you're in inside Kuvend (and your phone), or send it on
 
 const argv = process.argv.slice(2);
-const sub = ["serve", "code", "handoff"].includes(argv[0]) ? argv[0] : null;
+const sub = ["serve", "code", "handoff", "autostart"].includes(argv[0]) ? argv[0] : null;
 const args = sub ? argv.slice(1) : argv;
 const flag = (name: string) => args.includes(name);
 const value = (name: string) => {
@@ -31,6 +33,9 @@ kuvend serve [--port 4777] [--route tailscale|tunnel|auto]
 
 kuvend code
     Shows a code to pair a phone or a laptop with the Kuvend running on this machine.
+
+kuvend autostart on|off
+    Start Kuvend quietly when you log in (needs a global install: npm i -g kuvend).
 
 kuvend handoff [--agent claude|codex] [--to <computer>]
     Opens the newest Claude Code or Codex chat in this folder inside Kuvend, with its whole context.
@@ -85,7 +90,20 @@ async function handoffCmd() {
   if (!flag("--no-open")) open(`http://127.0.0.1:${port}/?s=${id}#token=${accessToken()}`);
 }
 
-if (sub === "code" || sub === "handoff") {
+if (sub === "autostart") {
+  const want = args[0];
+  if (want !== "on" && want !== "off") {
+    console.log(`\n  Start with your computer: ${autostartOn() ? "on" : "off"}. Use kuvend autostart on, or off.\n`);
+  } else {
+    try {
+      const file = setAutostart(want === "on");
+      console.log(want === "on" ? `\n  Kuvend will start in the background when you log in.\n  (${file})\n` : "\n  Kuvend won't start on its own anymore.\n");
+    } catch (e) {
+      console.error(`\n  ${e instanceof Error ? e.message : e}\n`);
+      process.exit(1);
+    }
+  }
+} else if (sub === "code" || sub === "handoff") {
   (sub === "code" ? code() : handoffCmd()).catch((e) => {
     console.error(`\n  ${e instanceof Error ? e.message : e}\n`);
     process.exit(1);
@@ -124,6 +142,8 @@ if (sub === "code" || sub === "handoff") {
           remoteLine = `  Remote access couldn't start: ${e instanceof Error ? e.message : e}\n\n`;
         }
       }
+      // A laptop keeps copies of its chats on its connected server, so the server can take over.
+      if (!serve) startMirroring(at, requestHandler());
       if (serve) console.log(`\n  Kuvend is serving.\n\n${moved}${remoteLine}  Keep it running (a systemd service does that for you; see the README).\n`);
       else console.log(`\n  Kuvend is running.\n\n${moved}  ${url}\n\n${remoteLine}  Keep this window open. Ctrl+C stops it.\n`);
       if (!serve && !flag("--no-open")) open(url);

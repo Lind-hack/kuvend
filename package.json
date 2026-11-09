@@ -1,6 +1,6 @@
 {
   "name": "kuvend",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "A local workspace for your coding agents: chat with Claude Code and Codex in your real project, undo any turn, run your app, and get a second opinion before you ship.",
   "keywords": [
     "claude-code",
@@ -37,7 +37,7 @@
     "build": "vite build && tsc -p tsconfig.server.json",
     "start": "node bin/kuvend.mjs",
     "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.web.json --noEmit",
-    "test": "tsx --test --test-concurrency=1 server/core.test.ts server/chats.test.ts",
+    "test": "tsx --test --test-concurrency=1 server/core.test.ts server/chats.test.ts server/mirror.test.ts",
     "prepublishOnly": "npm run build && npm test",
     "build:site": "node site-src/build.mjs"
   },

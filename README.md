@@ -50,7 +50,15 @@ Keep the terminal window open while you work. `Ctrl+C` stops Kuvend and any app 
 - On the phone, *Add to Home Screen* makes Kuvend open like an app. On an iPhone the home-screen app has its own storage, so it asks once for the short code shown under the QR (like `K7QD-M3XA`).
 - Phone and computer can use one chat at the same time: one turn runs at a time, the other device sees it live and is asked to wait.
 
-**Keep going with your laptop off.** Run Kuvend on a machine that stays on (a VPS, a spare PC) with `npx kuvend serve`, connect it under *Server*, and send any chat there from its menu: the chat file (so the agent resumes the same conversation), the history, and your code as it is right now, uncommitted work included (`.gitignore`d files like `.env` stay home). Pair your phone with the server too, and the chat goes on with the laptop closed. *Bring it back* returns it to your project as a safe copy on its own branch. See [Run Kuvend on a server](#run-kuvend-on-a-server).
+**Keep going with your laptop off.** Run Kuvend on a machine that stays on (a VPS, a spare PC) with `npx kuvend serve` and connect it under *Server*. From then on:
+- **The server keeps a copy of every chat.** After each turn on the laptop, Kuvend sends the server what changed: the turns, the new lines of the agent's chat file, and only the changed files (uncommitted work too; `.gitignore`d files like `.env` stay home).
+- **One app on your phone: the server's.** It shows the server's chats and, while the laptop is on, the laptop's live chats too (passed through the server, live).
+- **Laptop off?** Its chats show as copies; *Continue here* takes one over and the agent picks up with the whole conversation. When the laptop is back, it sees the chat moved; *Bring it back* returns it to your project as a safe copy on its own branch.
+- Or move a chat by hand: its menu, *Continue on your server*.
+
+See [Run Kuvend on a server](#run-kuvend-on-a-server).
+
+**Start with your computer.** `npm i -g kuvend`, then `kuvend autostart on` (or the switch in *Setup*): Kuvend starts quietly in the background when you log in, with phone access and server copies on.
 
 **Modes, in plain words.**
 - **Plan** looks and plans, and changes nothing.

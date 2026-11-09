@@ -136,7 +136,7 @@ export function Launch({ state, onOpen, initialProject, onNav, onSheet }: { stat
   }, [state, project]);
 
   const recents = useMemo<Recent[]>(() => {
-    const list: Recent[] = (state?.sessions ?? []).slice(0, 12).map((s) => ({ key: s.id, title: s.title, where: s.sentTo ? `on ${s.sentTo.name}` : folder(s.project), at: s.updatedAt, agent: s.agent, tag: s.from === "terminal" ? "terminal" : s.from ? `from ${s.from}` : null, open: async () => s.id }));
+    const list: Recent[] = (state?.sessions ?? []).filter((s) => !(s.mirrorOf && (!s.mirrorOf.takenAt || s.sentTo))).slice(0, 12).map((s) => ({ key: s.id, title: s.title, where: s.sentTo ? `on ${s.sentTo.name}` : folder(s.project), at: s.updatedAt, agent: s.agent, tag: s.from === "terminal" ? "terminal" : s.from ? `from ${s.from}` : null, open: async () => s.id }));
     for (const c of (chats ?? []).filter((c: Chat) => !c.session && c.here).slice(0, 12)) list.push({ key: c.id, title: c.title, where: folder(c.cwd), at: c.updatedAt, agent: c.agent, tag: "terminal", open: () => openChat(c) });
     return list.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 8);
   }, [state, chats]);
@@ -335,6 +335,7 @@ export function Settings({ state, onClose }: { state: AppState | null; onClose: 
           <ChannelCheck agent="codex" info={state?.agents.codex} />
         </section>
         <p className="text-[13px] leading-relaxed text-silk-3">Kuvend runs the agents you already have, signed in as you, with your skills, MCP servers and hooks. It never sees your logins.</p>
+        {!onPhone && <Autostart />}
         <CouncilLink />
       </div>
     </Sheet>
@@ -389,6 +390,40 @@ export function CouncilLink() {
           {error && <p className="text-[13px] text-clip">{error}</p>}
         </>
       )}
+    </div>
+  );
+}
+
+// Start with the computer: Kuvend runs quietly in the background from login, so your phone and your server
+// always find it.
+function Autostart() {
+  const [on, setOn] = useState<boolean | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    api<{ on: boolean }>("/api/autostart")
+      .then((r) => setOn(r.on))
+      .catch(() => setOn(null));
+  }, []);
+  if (on === null) return null;
+  return (
+    <div className="flex flex-col gap-2 border-t border-rule pt-4">
+      <label className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          className="mt-1 h-4 w-4"
+          checked={on}
+          onChange={(e) =>
+            void api<{ on: boolean }>("/api/autostart", { body: { on: e.target.checked } })
+              .then((r) => (setOn(r.on), setError("")))
+              .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+          }
+        />
+        <span>
+          <span className="block text-[15px] font-medium">Start with this computer</span>
+          <span className="block text-[13px] text-silk-3">Kuvend starts quietly in the background when you log in, so your phone and your server can always reach it.</span>
+        </span>
+      </label>
+      {error && <p className="text-[13px] text-clip">{error}</p>}
     </div>
   );
 }

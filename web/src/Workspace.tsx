@@ -1,6 +1,6 @@
 import { ArrowUp, GitBranch, LoaderCircle, Menu, MoreHorizontal, Save, Server, Smartphone, Square, SquareTerminal, Trash2, X } from "lucide-react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { AGENT_NAME, api, onPhone, type AgentId, type AppState, type FileChange, type Mode } from "./api";
+import { AGENT_NAME, api, onPhone, type AgentId, type AppState, type FileChange, type Mode, type Peer } from "./api";
 import { Monitor, type Tab } from "./Monitor";
 import { SendToServer } from "./Phone";
 import type { Sheet as SheetName } from "./Sidebar";
@@ -20,7 +20,7 @@ const QUICK = [
 const WINDOW = 30;
 const MemoTake = memo(Take);
 
-export function Workspace({ id, state, onHome, refreshState, onNav, onRunning, onSheet }: { id: string; state: AppState | null; onOpen: (id: string) => void; onHome: () => void; refreshState: () => void; onNav: () => void; onRunning: (r: boolean) => void; onSheet: (s: SheetName) => void }) {
+export function Workspace({ id, remote, state, onHome, refreshState, onNav, onRunning, onSheet }: { id: string; remote?: Peer; state: AppState | null; onOpen: (id: string) => void; onHome: () => void; refreshState: () => void; onNav: () => void; onRunning: (r: boolean) => void; onSheet: (s: SheetName) => void }) {
   const { data, error, reload } = useSession(id);
   const [text, setText] = useState("");
   const [agent, setAgent] = useState<AgentId>("claude");
@@ -130,6 +130,7 @@ export function Workspace({ id, state, onHome, refreshState, onNav, onRunning, o
   const projectName = shortPath(session.project).split(/[\\/]/).pop();
   const pending = turns.filter((t) => t.files?.length && !t.undone).length;
   const away = session.sentTo;
+  const copy = session.mirrorOf && !session.mirrorOf.takenAt ? session.mirrorOf : null; // the server's copy of a laptop chat
   const hidden = Math.max(0, turns.length - shown);
   const dismissHint = () => {
     setHint(false);
@@ -161,6 +162,12 @@ export function Workspace({ id, state, onHome, refreshState, onNav, onRunning, o
               </span>
             )}
             {session.handoff && <span className="shrink-0">from {session.handoff.from}</span>}
+            {remote && (
+              <span className="inline-flex shrink-0 items-center gap-1 text-dawn">
+                <Server className="h-3 w-3" aria-hidden /> live on {remote.name}
+              </span>
+            )}
+            {session.mirrorOf?.takenAt && <span className="shrink-0">taken over from {session.mirrorOf.name}</span>}
           </p>
         </div>
         <Button
@@ -208,7 +215,7 @@ export function Workspace({ id, state, onHome, refreshState, onNav, onRunning, o
                     Continue on phone
                   </MenuItem>
                 )}
-                {!away && (
+                {!away && !remote && !session.mirrorOf && (
                   <MenuItem icon={<Server className="h-3.5 w-3.5" />} disabled={running} onClick={() => (setMenu(false), setSending(true))}>
                     Continue on your server
                   </MenuItem>
@@ -244,6 +251,17 @@ export function Workspace({ id, state, onHome, refreshState, onNav, onRunning, o
                   </Button>
                 )}
               </div>
+            </div>
+          )}
+          {copy && (
+            <div className="glass mb-8 flex flex-col gap-3 rounded-[18px] p-4 sm:flex-row sm:items-center">
+              <Server className="h-5 w-5 shrink-0 text-dawn" aria-hidden />
+              <p className="min-w-0 flex-1 text-[14px] text-silk-2">
+                The server's copy of a chat on <span className="text-silk">{copy.name}</span>, as of {new Date(copy.at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}. If {copy.name} is on, open the chat from its section in the sidebar. If it's off, continue here: the agent picks up with the whole conversation.
+              </p>
+              <Button size="sm" tone="primary" className="shrink-0" disabled={!!busy} onClick={() => void act("take", async () => (await api(`/api/sessions/${id}/take-over`, { body: {} }), await reload()))} icon={busy === "take" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : undefined}>
+                Continue here
+              </Button>
             </div>
           )}
           {session.origin && hint && !away && (
@@ -305,7 +323,7 @@ export function Workspace({ id, state, onHome, refreshState, onNav, onRunning, o
       </div>
 
       {/* The composer floats over the end of the chat. */}
-      {!away && (
+      {!away && !copy && (
         <form
           className="pointer-events-none absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,transparent,rgb(7_8_12/0.85)_40%)] px-3 pt-10 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-8"
           onSubmit={(e) => {

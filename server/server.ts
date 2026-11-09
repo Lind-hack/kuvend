@@ -7,6 +7,8 @@ import os from "node:os";
 import { detectAgents, modelSuggestions } from "./agents.js";
 import * as chats from "./chats.js";
 import * as handoff from "./handoff.js";
+import * as mirror from "./mirror.js";
+import { autostartOn, setAutostart } from "./autostart.js";
 import * as git from "./git.js";
 import { run } from "./proc.js";
 import { detectCommand, errorContext, onRunState, runState, startApp, stopApp } from "./runapp.js";
@@ -140,7 +142,7 @@ route("GET", "/api/state", async () => ({
   projects: await Promise.all(recentProjects().slice(0, 8).map((p) => inspect(p).catch(() => null))).then((x) => x.filter(Boolean)),
   sessions: listSessions()
     .slice(0, 60)
-    .map((s) => ({ id: s.id, title: s.title, project: s.project, agent: s.agent, branch: s.branch, turns: s.turns.length, running: sessions.isRunning(s.id), updatedAt: s.updatedAt, from: s.origin ? "terminal" : s.handoff ? s.handoff.from : null, sentTo: s.sentTo ? { name: s.sentTo.name, url: s.sentTo.url } : null })),
+    .map((s) => ({ id: s.id, title: s.title, project: s.project, agent: s.agent, branch: s.branch, turns: s.turns.length, running: sessions.isRunning(s.id), updatedAt: s.updatedAt, from: s.origin ? "terminal" : s.handoff ? s.handoff.from : null, sentTo: s.sentTo ? { name: s.sentTo.name, url: s.sentTo.url } : null, mirrorOf: s.mirrorOf ?? null })),
   machine: os.hostname(),
 }));
 
@@ -159,7 +161,7 @@ route("POST", "/api/chats/import", async (req) => {
 });
 
 // ---------- another computer: a server that stays on ----------
-const peerView = () => readPeers().map(({ id, name, url, addedAt }) => ({ id, name, url, addedAt }));
+const peerView = () => readPeers().map(({ id, name, url, addedAt, role }) => ({ id, name, url, addedAt, role: role ?? "server" }));
 const bad = (e: unknown, status = 400) => new HttpError(status, e instanceof Error ? e.message : String(e));
 route("GET", "/api/peers", async () => ({ peers: peerView() }));
 route("POST", "/api/peers", async (req) => {
@@ -207,6 +209,44 @@ route("POST", "/api/sessions/(s[a-z0-9]+)/bring-back", async (_r, m) => {
     throw bad(e);
   }
 });
+// The server's copies of the laptop's chats (mirror.ts).
+route("POST", "/api/handoff/mirror", async (req) => {
+  try {
+    const s = await mirror.applyMirror(await body(req, handoff.MAX_PACKAGE));
+    return { ok: true, id: s.id };
+  } catch (e) {
+    throw e instanceof HttpError ? e : bad(e, e instanceof mirror.MirrorError ? 409 : 400);
+  }
+});
+route("GET", "/api/handoff/taken", async () => ({ ids: mirror.takenIds() }));
+route("POST", "/api/sessions/(s[a-z0-9]+)/take-over", async (_r, m) => {
+  try {
+    return mirror.takeOver(m[1]);
+  } catch (e) {
+    throw bad(e);
+  }
+});
+// The laptop pairs this server with itself, so the server's app can show the laptop's live chats.
+route("POST", "/api/peers/reverse", async (req) => {
+  const b = await body(req);
+  try {
+    await mirror.linkFromLaptop(str(b.url, 300), str(b.code, 64));
+  } catch (e) {
+    throw bad(e);
+  }
+  return { ok: true };
+});
+route("GET", "/api/autostart", async () => ({ on: autostartOn() }));
+route("POST", "/api/autostart", async (req) => {
+  laptopOnly(req);
+  try {
+    setAutostart((await body(req)).on === true);
+  } catch (e) {
+    throw bad(e);
+  }
+  return { on: autostartOn() };
+});
+
 // What the other computer calls: take a session, give one back, and note that it went home.
 route("POST", "/api/handoff/import", async (req) => {
   try {
@@ -488,6 +528,30 @@ export function createServer(port: number) {
     if (device) phoneOf.set(req, device);
     if (!who) return res.writeHead(401, { "Content-Type": "application/json" }).end(JSON.stringify({ error: local ? "Open Kuvend from the link it printed when it started" : "This phone isn't paired, or was removed. Scan the code on your computer again." }));
     caller.set(req, who);
+
+    // Another computer's chats, passed through (the server's app showing the laptop's live chats). Only chat
+    // routes go through; this machine's key never leaves it, the other one is signed in to with its own.
+    const px = url.pathname.match(/^\/api\/peers\/(p[a-z0-9]+)\/proxy\/(.*)$/);
+    if (px) {
+      const peer = readPeers().find((p) => p.id === px[1]);
+      if (!peer) return res.writeHead(404, { "Content-Type": "application/json" }).end('{"error":"No such computer"}');
+      if (!/^(sessions|settings|project)(\/|$)/.test(px[2])) return res.writeHead(403, { "Content-Type": "application/json" }).end('{"error":"Not passed through"}');
+      const q = new URLSearchParams(url.search);
+      q.delete("token");
+      const target = new URL(`api/${px[2]}${q.toString() ? `?${q}` : ""}`, peer.url);
+      const up = http.request(target, { method: req.method, headers: { "x-kuvend-token": peer.token, "Content-Type": String(req.headers["content-type"] ?? "application/json"), Accept: String(req.headers.accept ?? "*/*") } }, (ur) => {
+        res.writeHead(ur.statusCode ?? 502, { "Content-Type": ur.headers["content-type"] ?? "application/json", "Cache-Control": "no-store" });
+        res.flushHeaders();
+        ur.pipe(res);
+      });
+      up.on("error", () => {
+        if (!res.headersSent) res.writeHead(502, { "Content-Type": "application/json" }).end(JSON.stringify({ error: `${peer.name} isn't reachable right now.` }));
+        else res.end();
+      });
+      res.on("close", () => up.destroy());
+      req.pipe(up);
+      return;
+    }
 
     // Live updates for one session: turns, streaming text and the app's output.
     const ev = url.pathname.match(/^\/api\/sessions\/(s[a-z0-9]+)\/events$/);

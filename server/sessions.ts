@@ -22,6 +22,13 @@ function broadcast(id: string, msg: unknown) {
   for (const fn of listeners.get(id) ?? []) fn(msg);
 }
 
+// Who wants to know when a turn ends (the server copies: mirror.ts).
+const turnEnd = new Set<(id: string) => void>();
+export const onTurnEnd = (fn: (id: string) => void) => void turnEnd.add(fn);
+const ended = (id: string) => {
+  for (const fn of turnEnd) fn(id);
+};
+
 export const liveDelta = (id: string) => live.get(id)?.delta ?? "";
 export const isRunning = (id: string) => live.has(id);
 
@@ -132,6 +139,7 @@ ${opts.prompt}`);
   if (s.title === "New session" && turn.kind === "chat") s.title = turn.prompt.split("\n")[0].slice(0, 60);
   saveSession(s);
   broadcast(s.id, { type: "turn", turn, ended: true });
+  ended(s.id);
 }
 
 export async function send(id: string, input: { prompt: string; agent?: AgentId; mode?: Mode; model?: string; allow?: string[] }) {
@@ -139,6 +147,7 @@ export async function send(id: string, input: { prompt: string; agent?: AgentId;
   const prompt = input.prompt.trim();
   if (!prompt) throw new Error("Type a message first");
   if (s.sentTo) throw new Error(`This chat continues on ${s.sentTo.name}. Open it there, or bring it back first.`);
+  if (s.mirrorOf && !s.mirrorOf.takenAt) throw new Error(`This is a copy of a chat on ${s.mirrorOf.name}. Choose Continue here to take it over.`);
   const l = reserve(id);
   if (input.agent) s.agent = input.agent;
   if (input.mode) s.mode = input.mode;
@@ -202,6 +211,7 @@ export async function undo(id: string, turnId: string) {
   t.undone = { at: new Date().toISOString(), redo };
   saveSession(s);
   broadcast(id, { type: "turn", turn: t });
+  ended(id);
   return t;
 }
 
@@ -214,6 +224,7 @@ export async function redo(id: string, turnId: string) {
   delete t.undone;
   saveSession(s);
   broadcast(id, { type: "turn", turn: t });
+  ended(id);
   return t;
 }
 

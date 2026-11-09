@@ -67,6 +67,7 @@ export type Session = {
   handoff?: { from: string; at: string; project: string }; // handed over from another computer's Kuvend
   sentTo?: { peer: string; name: string; remoteId: string; url: string; at: string }; // handed over to another computer: continue it there
   brief?: string; // the conversation so far in plain text, for an agent that can't resume the original chat
+  mirrorOf?: { name: string; at: string; takenAt?: string }; // a copy kept for another computer (your laptop); taken over when it's off
 };
 
 export const newId = (prefix: string) => `${prefix}${Date.now().toString(36)}${crypto.randomBytes(3).toString("hex")}`;
@@ -151,7 +152,9 @@ export function rememberProject(dir: string) {
 }
 
 // Other computers running Kuvend that this one can hand sessions to (a server that stays on).
-export type Peer = { id: string; name: string; url: string; token: string; addedAt: string };
+// role "server": a machine this one copies its chats to. role "laptop": the machine that copies to this one
+// (a server reaches its laptop through it, to show the laptop's live chats in one app).
+export type Peer = { id: string; name: string; url: string; token: string; addedAt: string; role?: "server" | "laptop"; linked?: boolean };
 const peersFile = () => path.join(home(), "peers.json");
 export function readPeers(): Peer[] {
   try {

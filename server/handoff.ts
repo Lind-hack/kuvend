@@ -67,10 +67,10 @@ export async function exportSession(id: string): Promise<Package> {
   };
 }
 
-const safeName = (s: string) => s.replace(/[^\w.-]+/g, "-").replace(/^[-.]+|-+$/g, "").slice(0, 60) || "project";
-const projectsRoot = () => process.env.KUVEND_PROJECTS ?? path.join(home(), "projects");
+export const safeName = (s: string) => s.replace(/[^\w.-]+/g, "-").replace(/^[-.]+|-+$/g, "").slice(0, 60) || "project";
+export const projectsRoot = () => process.env.KUVEND_PROJECTS ?? path.join(home(), "projects");
 // Claude Code finds a chat by the folder it runs in: ~/.claude/projects/<folder, non-alphanumerics as ->/.
-const claudeFolder = (cwd: string) => path.join(claudeDir(), "projects", cwd.replace(/[^a-zA-Z0-9]/g, "-"));
+export const claudeFolder = (cwd: string) => path.join(claudeDir(), "projects", cwd.replace(/[^a-zA-Z0-9]/g, "-"));
 
 function check(p: any): Package {
   const ok =
@@ -106,12 +106,12 @@ function placeAgentFile(pkg: Package, cwd: string) {
   return true;
 }
 
-async function fetchBundle(repo: string, b: NonNullable<Package["bundle"]>) {
+export async function fetchBundle(repo: string, b: { ref: string; data: string }) {
   const tmp = path.join(os.tmpdir(), `kuvend-${newId("b")}.bundle`);
   fs.writeFileSync(tmp, Buffer.from(b.data, "base64"));
   try {
-    const r = await git.git(repo, ["fetch", "--no-tags", tmp, `${b.ref}:${b.ref}`]);
-    if (!r.ok) throw new Error(r.err.trim() || "Couldn't read the code that came with this session");
+    const r = await git.git(repo, ["fetch", "--no-tags", tmp, `+${b.ref}:${b.ref}`]);
+    if (!r.ok) throw new Error(r.err.split("\n").filter((l) => l.trim() && !l.startsWith("warning:")).at(-1) ?? "Couldn't read the code that came with this session");
   } finally {
     fs.rmSync(tmp, { force: true });
   }
@@ -121,10 +121,10 @@ async function fetchBundle(repo: string, b: NonNullable<Package["bundle"]>) {
 // your folder is untouched until you merge it. Anything else: a fresh folder of its own, never an
 // existing project that happens to share the path.
 async function placeCode(pkg: Package, id: string, goingHome: boolean): Promise<{ project: string; cwd: string; branch?: string }> {
-  const branch = `kuvend/from-${safeName(pkg.from).toLowerCase()}-${id.slice(-5)}`;
+  const branch = `kuvend/from-${safeName(pkg.from).toLowerCase()}-${id.slice(-5)}${goingHome ? `-${Date.now().toString(36)}` : ""}`;
   const local = goingHome && path.isAbsolute(pkg.project.path) && fs.existsSync(pkg.project.path) ? path.resolve(pkg.project.path) : null;
   if (local && pkg.bundle && (await git.isRepo(local)) && (await git.hasCommits(local))) {
-    const cwd = path.join(home(), "copies", id);
+    const cwd = path.join(home(), "copies", `${id}-${Date.now().toString(36)}`);
     await git.addWorktree(local, cwd, branch);
     await fetchBundle(local, pkg.bundle);
     await git.restore(cwd, pkg.bundle.sha);
@@ -212,7 +212,7 @@ export async function peerCall<T>(peer: Pick<Peer, "url" | "token">, p: string, 
   return j as T;
 }
 
-export async function addPeer(urlIn: string, code: string): Promise<Peer> {
+export async function addPeer(urlIn: string, code: string, role: "server" | "laptop" = "server"): Promise<Peer> {
   const url = normalUrl(urlIn);
   let res: Response;
   try {
@@ -223,7 +223,7 @@ export async function addPeer(urlIn: string, code: string): Promise<Peer> {
   const j = (await res.json().catch(() => ({}))) as any;
   if (!res.ok || typeof j?.token !== "string") throw new Error(j?.error ?? "Pairing failed");
   const info = await peerCall<{ machine?: string }>({ url, token: j.token }, "api/remote").catch(() => ({}) as { machine?: string });
-  const peer: Peer = { id: `p${j.id ?? newId("")}`.slice(0, 16), name: (info.machine ?? new URL(url).hostname.split(".")[0]).slice(0, 40), url, token: j.token, addedAt: new Date().toISOString() };
+  const peer: Peer = { id: `p${j.id ?? newId("")}`.slice(0, 16), name: (info.machine ?? new URL(url).hostname.split(".")[0]).slice(0, 40), url, token: j.token, addedAt: new Date().toISOString(), role };
   writePeers([...readPeers().filter((p) => p.url !== url), peer]);
   return peer;
 }

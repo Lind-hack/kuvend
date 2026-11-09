@@ -1,6 +1,6 @@
 import { LoaderCircle, Plus, Server, Settings2, Smartphone, SquareTerminal, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { api, onPhone, type AppState, type Chat } from "./api";
+import { api, onPhone, type AppState, type Chat, type Peer, type SessionSummary } from "./api";
 import { AgentDot, ago, cx, Led, Mark } from "./ui";
 
 const folder = (p: string) => p.split(/[\\/]/).filter(Boolean).pop() ?? p;
@@ -69,13 +69,13 @@ export function Sidebar({ state, current, currentRunning, onOpen, onHome, onShee
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
-        {(state?.sessions.length ?? 0) > 0 && (
+        {(state?.sessions.some((s) => !(s.mirrorOf && (!s.mirrorOf.takenAt || s.sentTo))) ?? false) && (
           <section aria-labelledby="nav-kuvend">
             <h2 id="nav-kuvend" className="silk px-2 pt-2 pb-1.5">
               Chats
             </h2>
             <ul className="flex flex-col gap-px">
-              {state!.sessions.map((s) => {
+              {state!.sessions.filter((s) => !(s.mirrorOf && (!s.mirrorOf.takenAt || s.sentTo))).map((s) => {
                 const on = s.id === current;
                 const working = on ? currentRunning : s.running;
                 return (
@@ -97,6 +97,8 @@ export function Sidebar({ state, current, currentRunning, onOpen, onHome, onShee
             </ul>
           </section>
         )}
+
+        <PeerSections state={state} current={current} onOpen={onOpen} />
 
         {/* Your own computer's terminal chats only: a phone sees the computer's list the same way. */}
         <section aria-labelledby="nav-terminal" className="mt-4">
@@ -156,5 +158,79 @@ function FootButton({ onClick, icon, children }: { onClick: () => void; icon: Re
       {icon}
       {children}
     </button>
+  );
+}
+
+// Each connected computer: its live chats while it's on (opened through this one); while it's off, the
+// copies this machine keeps of them, ready to continue here.
+function PeerSections({ state, current, onOpen }: { state: AppState | null; current: string | null; onOpen: (id: string) => void }) {
+  const [peers, setPeers] = useState<Peer[]>([]);
+  useEffect(() => {
+    api<{ peers: Peer[] }>("/api/peers")
+      .then((r) => setPeers(r.peers))
+      .catch(() => {});
+  }, []);
+  return (
+    <>
+      {peers.map((p) => (
+        <PeerSection key={p.id} peer={p} state={state} current={current} onOpen={onOpen} />
+      ))}
+    </>
+  );
+}
+
+function PeerSection({ peer, state, current, onOpen }: { peer: Peer; state: AppState | null; current: string | null; onOpen: (id: string) => void }) {
+  const [live, setLive] = useState<{ sessions: SessionSummary[]; machine: string } | "down" | null>(null);
+  useEffect(() => {
+    let stop = false;
+    const load = () =>
+      api<{ sessions: SessionSummary[]; machine: string }>(`/api/peers/${peer.id}/state`)
+        .then((r) => !stop && setLive(r))
+        .catch(() => !stop && setLive("down"));
+    load();
+    const t = setInterval(load, 15_000);
+    return () => {
+      stop = true;
+      clearInterval(t);
+    };
+  }, [peer.id]);
+  const me = state?.machine;
+  // Online: its chats, minus the copies it keeps of this machine's own chats.
+  const online = live && live !== "down" ? live.sessions.filter((s) => !(s.mirrorOf && s.mirrorOf.name === me && !s.mirrorOf.takenAt) && s.sentTo?.name !== me) : [];
+  // Offline: the copies kept here.
+  const copies = (state?.sessions ?? []).filter((s) => s.mirrorOf && !s.mirrorOf.takenAt && s.mirrorOf.name === peer.name);
+  const items: { key: string; s: SessionSummary; note: string }[] = live === "down" ? copies.map((s) => ({ key: s.id, s, note: "copy, continue here" })) : online.map((s) => ({ key: `${peer.id}:${s.id}`, s, note: s.mirrorOf?.takenAt ? `taken over from ${s.mirrorOf.name}` : "" }));
+  if (live === null && copies.length === 0) return null;
+  return (
+    <section aria-labelledby={`nav-${peer.id}`} className="mt-4">
+      <h2 id={`nav-${peer.id}`} className="silk flex items-center gap-1.5 px-2 pt-2 pb-1.5">
+        <Led color={live === "down" ? "var(--color-silk-3)" : "var(--color-go)"} on={live !== "down"} label={live === "down" ? "Off" : "On"} />
+        On {peer.name}
+        {live === "down" && <span className="text-silk-3">, off right now</span>}
+      </h2>
+      {items.length === 0 ? (
+        <p className="px-2.5 py-1 text-[12.5px] text-silk-3">{live === "down" ? "No copies of its chats here yet." : "No chats there yet."}</p>
+      ) : (
+        <ul className="flex flex-col gap-px">
+          {items.slice(0, 30).map(({ key, s, note }) => {
+            const on = key === current;
+            return (
+              <li key={key}>
+                <button type="button" onClick={() => onOpen(key)} aria-current={on ? "page" : undefined} className={cx("group flex w-full items-start gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors", on ? "bg-white/[0.08] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)]" : "hover:bg-white/[0.04]")}>
+                  <AgentDot agent={s.agent} className="mt-[7px]" />
+                  <span className="min-w-0 flex-1">
+                    <span className={cx("block truncate text-[14px]", on ? "text-silk" : "text-silk-2 group-hover:text-silk")}>{s.title}</span>
+                    <span className="block truncate text-[12px] text-silk-3">
+                      {note || folder(s.project)} · {ago(s.updatedAt)}
+                    </span>
+                  </span>
+                  {s.running && <Led color="var(--color-dawn)" blink label="Working" />}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }

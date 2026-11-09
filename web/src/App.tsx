@@ -1,6 +1,6 @@
 import { LoaderCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { api, onPhone, pairFromHash, pairPhone, standalone, token, type AppState } from "./api";
+import { api, onPhone, pairFromHash, pairPhone, setRemote, standalone, token, type AppState, type Peer } from "./api";
 import { Backdrop } from "./Backdrop";
 import { Launch, Settings } from "./Launch";
 import { PhonePanel, ServerPanel } from "./Phone";
@@ -8,8 +8,14 @@ import { Sidebar, type Sheet } from "./Sidebar";
 import { Button, cx, Mark } from "./ui";
 import { Workspace } from "./Workspace";
 
-// Which screen: home, or one chat (#/s/<id> keeps it across reloads; ?s=<id> opens one from the terminal).
-const sessionFromHash = () => location.hash.match(/^#\/s\/(s[a-z0-9]+)$/)?.[1] ?? null;
+// Which screen: home, or one chat. #/s/<id> is a chat here; #/p/<computer>/s/<id> a chat on another
+// computer, reached through this one (written "<computer>:<id>" inside the app). ?s=<id> opens one from
+// the terminal.
+const sessionFromHash = () => {
+  const m = location.hash.match(/^#\/(?:p\/(p[a-z0-9]+)\/)?s\/(s[a-z0-9]+)$/);
+  return m ? (m[1] ? `${m[1]}:${m[2]}` : m[2]) : null;
+};
+const hashFor = (key: string | null) => (!key ? "" : key.includes(":") ? `/p/${key.split(":")[0]}/s/${key.split(":")[1]}` : `/s/${key}`);
 {
   const s = new URLSearchParams(location.search).get("s");
   if (s && /^s[a-z0-9]+$/.test(s)) history.replaceState(null, "", `${location.pathname}#/s/${s}`);
@@ -134,7 +140,11 @@ function Main() {
   const [running, setRunning] = useState(false);
   const initialProject = new URLSearchParams(location.search).get("project") ?? undefined;
 
+  const [peers, setPeers] = useState<Peer[]>([]);
   const refresh = useCallback(() => {
+    api<{ peers: Peer[] }>("/api/peers")
+      .then((r) => setPeers(r.peers))
+      .catch(() => {});
     api<AppState>("/api/state")
       .then((s) => {
         setState(s);
@@ -158,7 +168,7 @@ function Main() {
   }, [refresh]);
 
   const open = (id: string | null) => {
-    location.hash = id ? `/s/${id}` : "";
+    location.hash = hashFor(id);
     setSession(id);
     setNavOpen(false);
     refresh();
@@ -176,6 +186,11 @@ function Main() {
       </Center>
     );
 
+  // A chat on another computer: its calls go through this one.
+  const [peerId, sid] = session?.includes(":") ? (session.split(":") as [string, string]) : [null, session];
+  setRemote(peerId);
+  const remotePeer = peerId ? (peers.find((p) => p.id === peerId) ?? { id: peerId, name: "your other computer", url: "", addedAt: "", role: "laptop" as const }) : undefined;
+
   return (
     <div className="grid h-dvh min-h-0 grid-cols-1 lg:grid-cols-[272px_minmax(0,1fr)]">
       <aside className={cx("glass-quiet min-h-0 lg:m-2 lg:mr-0 lg:rounded-[18px] max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-40 max-lg:w-[88vw] max-lg:max-w-[340px] max-lg:bg-panel/95 max-lg:pt-[env(safe-area-inset-top)] max-lg:transition-transform max-lg:duration-[420ms] max-lg:ease-[var(--ease-spring)]", !navOpen && "max-lg:-translate-x-[105%]")}>
@@ -185,7 +200,7 @@ function Main() {
 
       <div className="min-h-0 min-w-0">
         {session ? (
-          <Workspace key={session} id={session} state={state} onOpen={open} onHome={() => open(null)} refreshState={refresh} onNav={() => setNavOpen(true)} onRunning={setRunning} onSheet={setSheet} />
+          <Workspace key={session} id={sid!} remote={remotePeer} state={state} onOpen={open} onHome={() => open(null)} refreshState={refresh} onNav={() => setNavOpen(true)} onRunning={setRunning} onSheet={setSheet} />
         ) : (
           <Launch state={state} onOpen={open} initialProject={initialProject} onNav={() => setNavOpen(true)} onSheet={setSheet} />
         )}
