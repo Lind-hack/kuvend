@@ -59,11 +59,69 @@ export function CodeCard({ code, session, onNew }: { code: PairCode; session?: s
   );
 }
 
+// The connected servers (machines that stay on), if any.
+function useServers() {
+  const [servers, setServers] = useState<Peer[] | null>(null);
+  useEffect(() => {
+    api<{ peers: Peer[] }>("/api/peers")
+      .then((r) => setServers(r.peers.filter((p) => p.role === "server")))
+      .catch(() => setServers([]));
+  }, []);
+  return servers;
+}
+
+// A phone paired with this laptop can only reach it while the laptop is on. A phone paired with the
+// server works always: the server's app shows its own chats, the copies of this laptop's chats (to
+// continue with the laptop off), and, while the laptop is on, the laptop's live chats too.
+function PairWithServer({ servers }: { servers: Peer[] | null }) {
+  const [code, setCode] = useState<{ peer: string; code: PairCode } | null>(null);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  if (servers === null) return null;
+  if (servers.length === 0)
+    return (
+      <div className="mb-5 rounded-[14px] bg-white/[0.03] p-3.5 text-[13px] leading-relaxed text-silk-2 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.07)]">
+        <p>
+          <span className="text-silk">With this laptop off, your phone has nothing to connect to.</span> Kuvend and the agents run on this laptop, so when it's off or asleep, the phone can't open anything. To keep going with it off, run Kuvend on a machine that stays on (a VPS, a spare PC) and connect it under <span className="text-silk">Server</span>. Then pair your phone with the server here.
+        </p>
+      </div>
+    );
+  const pair = async (p: Peer) => {
+    setBusy(p.id);
+    setError("");
+    try {
+      setCode({ peer: p.id, code: await api<PairCode>(`/api/peers/${p.id}/code`, { body: {} }) });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+    setBusy("");
+  };
+  return (
+    <div className="mb-6 flex flex-col gap-3 border-b border-rule pb-6">
+      <p className="text-[14px] leading-relaxed text-silk-2">
+        <span className="font-medium text-silk">Works with this laptop off:</span> pair your phone with your server. Its app shows this laptop's chats live while the laptop is on, and its copies of them, ready to continue, while it's off.
+      </p>
+      {code ? (
+        <CodeCard code={code.code} onNew={() => void pair(servers.find((p) => p.id === code.peer)!)} />
+      ) : (
+        servers.map((p) => (
+          <Button key={p.id} tone="primary" className="w-full" disabled={!!busy} onClick={() => void pair(p)} icon={busy === p.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Server className="h-4 w-4" />}>
+            Pair your phone with {p.name}
+          </Button>
+        ))
+      )}
+      <p className="text-[12.5px] leading-relaxed text-silk-3">Already paired your phone with this laptop? Pair it with the server instead and use that one: remove the old home-screen app and add the server's.</p>
+      {error && <p className="text-[13px] text-clip">{error}</p>}
+    </div>
+  );
+}
+
 export function PhonePanel({ session, onClose }: { session?: string; onClose: () => void }) {
   const [st, setSt] = useState<RemoteStatus | null>(null);
   const [code, setCode] = useState<PairCode | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const servers = useServers();
 
   const act = useCallback(async (name: string, fn: () => Promise<unknown>) => {
     setBusy(name);
@@ -78,14 +136,17 @@ export function PhonePanel({ session, onClose }: { session?: string; onClose: ()
   }, []);
   const newCode = useCallback(() => act("code", async () => setCode(await api<PairCode>("/api/remote/code", { body: {} }))), [act]);
 
+  // A code for this laptop shows up by itself only when there's no server to pair with instead.
+  const noServer = servers?.length === 0;
   useEffect(() => {
+    if (servers === null) return;
     api<RemoteStatus>("/api/remote")
       .then((s) => {
         setSt(s);
-        if (s.on && s.devices.length === 0) void newCode();
+        if (s.on && s.devices.length === 0 && noServer) void newCode();
       })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, [newCode]);
+  }, [newCode, servers === null, noServer]);
 
   // While a code is showing, notice the moment a phone pairs with it.
   useEffect(() => {
@@ -116,12 +177,13 @@ export function PhonePanel({ session, onClose }: { session?: string; onClose: ()
 
   return (
     <Sheet title="Your phone" icon={<Smartphone className="h-[18px] w-[18px]" />} onClose={onClose}>
-      <p className="text-[14px] leading-relaxed text-silk-2">The agents keep running on this computer, so your phone picks up the same chats with every skill, MCP server, hook and sign-in.</p>
+      <PairWithServer servers={servers} />
+      <p className="text-[14px] leading-relaxed text-silk-2">{servers?.length ? "Or pair with this computer. That works only while it's on: the agents run here, with every skill, MCP server, hook and sign-in." : "The agents keep running on this computer, so your phone picks up the same chats with every skill, MCP server, hook and sign-in."}</p>
       {!st ? (
         !error && <LoaderCircle className="mt-6 h-4 w-4 animate-spin text-silk-3" aria-label="Checking" />
       ) : !st.on ? (
         <div className="mt-6 flex flex-col gap-3">
-          <Button tone="primary" className="w-full" disabled={!!busy} onClick={() => void start("auto")} icon={busy === "start" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : undefined}>
+          <Button tone={servers?.length ? "plain" : "primary"} className="w-full" disabled={!!busy} onClick={() => void start("auto")} icon={busy === "start" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : undefined}>
             {busy === "start" ? "Connecting…" : "Turn on phone access"}
           </Button>
           <p className="text-[12.5px] leading-relaxed text-silk-3">With Tailscale on this computer and your phone, the connection is private between your own devices. Without it, Kuvend opens a Cloudflare tunnel: an HTTPS link only a paired phone can use.</p>

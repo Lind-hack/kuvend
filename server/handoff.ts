@@ -202,7 +202,8 @@ export async function peerCall<T>(peer: Pick<Peer, "url" | "token">, p: string, 
       method: init.method ?? (init.body ? "POST" : "GET"),
       headers: { "Content-Type": "application/json", "x-kuvend-token": peer.token },
       body: init.body ? JSON.stringify(init.body) : undefined,
-      signal: AbortSignal.timeout(10 * 60_000),
+      // Sending or fetching a whole chat can take minutes; anything else that doesn't answer soon is off.
+      signal: AbortSignal.timeout(init.body || p.startsWith("api/handoff/export") ? 10 * 60_000 : 20_000),
     });
   } catch {
     throw new Error("The other computer didn't answer. Check that Kuvend is running there and that both are on Tailscale.");

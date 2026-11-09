@@ -1,10 +1,11 @@
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
+import os from "node:os";
 import fs from "node:fs";
 import path from "node:path";
 import { autostartOn, setAutostart } from "./autostart.js";
 import { listChats } from "./chats.js";
 import { startMirroring } from "./mirror.js";
-import { keptRoute, startRemote, stopRemote } from "./remote.js";
+import { keptRoute, startRemote, status as remoteStatus, stopRemote } from "./remote.js";
 import { stopAll } from "./runapp.js";
 import { createServer, requestHandler } from "./server.js";
 import { accessToken, readRunning, writeRunning } from "./store.js";
@@ -34,8 +35,9 @@ kuvend serve [--port 4777] [--route tailscale|tunnel|auto]
 kuvend code
     Shows a code to pair a phone or a laptop with the Kuvend running on this machine.
 
-kuvend autostart on|off
+kuvend autostart on|off [--serve]
     Start Kuvend quietly when you log in (needs a global install: npm i -g kuvend).
+    --serve: on a server, start "kuvend serve" at boot and keep it running (Linux: a systemd user service).
 
 kuvend handoff [--agent claude|codex] [--to <computer>]
     Opens the newest Claude Code or Codex chat in this folder inside Kuvend, with its whole context.
@@ -90,14 +92,37 @@ async function handoffCmd() {
   if (!flag("--no-open")) open(`http://127.0.0.1:${port}/?s=${id}#token=${accessToken()}`);
 }
 
+// true, or the command to run by hand.
+function run1(cmd: string, a: string[]): true | string {
+  try {
+    execFileSync(cmd, a, { stdio: "ignore", timeout: 30_000 });
+    return true;
+  } catch {
+    return [cmd === "loginctl" ? "sudo" : "", cmd, ...a].filter(Boolean).join(" ");
+  }
+}
+const systemctl = (a: string[]) => run1("systemctl", ["--user", ...a]);
+
 if (sub === "autostart") {
   const want = args[0];
   if (want !== "on" && want !== "off") {
     console.log(`\n  Start with your computer: ${autostartOn() ? "on" : "off"}. Use kuvend autostart on, or off.\n`);
   } else {
     try {
-      const file = setAutostart(want === "on");
-      console.log(want === "on" ? `\n  Kuvend will start in the background when you log in.\n  (${file})\n` : "\n  Kuvend won't start on its own anymore.\n");
+      const serve = flag("--serve");
+      const linux = process.platform === "linux";
+      if (want === "off" && linux) systemctl(["disable", "--now", "kuvend"]);
+      const file = setAutostart(want === "on", { serve });
+      if (want === "on" && serve && linux) {
+        // Run it now, at every boot, and without anyone logged in (lingering).
+        const steps = [systemctl(["daemon-reload"]), systemctl(["enable", "--now", "kuvend"]), run1("loginctl", ["enable-linger", os.userInfo().username])];
+        const failed = steps.filter((x) => x !== true) as string[];
+        console.log(`\n  Kuvend serve is set up as a service (${file}).\n`);
+        if (failed.length) console.log(`  Some steps need doing by hand:\n${failed.map((f) => `    ${f}`).join("\n")}\n`);
+        else console.log("  It's running now, starts at boot, and restarts if it stops.\n  Its output: journalctl --user -u kuvend -f\n  Pair your laptop or phone: kuvend code\n");
+      } else {
+        console.log(want === "on" ? `\n  Kuvend${serve ? " serve" : ""} will start in the background when you log in.\n  (${file})\n` : "\n  Kuvend won't start on its own anymore.\n");
+      }
     } catch (e) {
       console.error(`\n  ${e instanceof Error ? e.message : e}\n`);
       process.exit(1);
@@ -139,8 +164,22 @@ if (sub === "autostart") {
           const st = await startRemote(at, requestHandler(), route, { awake: !serve });
           remoteLine = `  Remote access is on: ${st.url}\n${serve ? "  Pair a phone or your laptop: kuvend code\n" : ""}\n`;
         } catch (e) {
-          remoteLine = `  Remote access couldn't start: ${e instanceof Error ? e.message : e}\n\n`;
+          remoteLine = `  Remote access couldn't start: ${e instanceof Error ? e.message : e}\n${serve ? "  Trying again every 30 seconds.\n" : ""}\n`;
         }
+      }
+      // A server keeps remote access up. Started at boot it can come up before Tailscale has, and a route
+      // can drop later (Tailscale restarted, the tunnel died): keep trying, or phones and the laptop could
+      // never reach it until someone restarted it by hand.
+      if (serve && route) {
+        let trying = false;
+        setInterval(() => {
+          if (trying || remoteStatus().on) return;
+          trying = true;
+          startRemote(at, requestHandler(), route, { awake: false })
+            .then((st) => console.log(`\n  Remote access is on: ${st.url}\n`))
+            .catch(() => {})
+            .finally(() => (trying = false));
+        }, 30_000);
       }
       // A laptop keeps copies of its chats on its connected server, so the server can take over.
       if (!serve) startMirroring(at, requestHandler());

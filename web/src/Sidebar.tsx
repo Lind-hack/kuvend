@@ -170,10 +170,38 @@ function PeerSections({ state, current, onOpen }: { state: AppState | null; curr
       .then((r) => setPeers(r.peers))
       .catch(() => {});
   }, []);
+  // Copies of a computer this one has no link to (the link back never happened, e.g. its phone access ran
+  // through a Cloudflare tunnel): still listed, so they can be continued with that computer off.
+  const linked = new Set(peers.map((p) => p.name));
+  const loose = (state?.sessions ?? []).filter((s) => s.mirrorOf && !s.mirrorOf.takenAt && !linked.has(s.mirrorOf.name));
+  const names = [...new Set(loose.map((s) => s.mirrorOf!.name))];
   return (
     <>
       {peers.map((p) => (
         <PeerSection key={p.id} peer={p} state={state} current={current} onOpen={onOpen} />
+      ))}
+      {names.map((name) => (
+        <section key={name} aria-labelledby={`nav-copy-${name}`} className="mt-4">
+          <h2 id={`nav-copy-${name}`} className="silk flex items-center gap-1.5 px-2 pt-2 pb-1.5">
+            Copies from {name}
+          </h2>
+          <ul className="flex flex-col gap-px">
+            {loose
+              .filter((s) => s.mirrorOf!.name === name)
+              .slice(0, 30)
+              .map((s) => (
+                <li key={s.id}>
+                  <button type="button" onClick={() => onOpen(s.id)} aria-current={s.id === current ? "page" : undefined} className={cx("group flex w-full items-start gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors", s.id === current ? "bg-white/[0.08] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)]" : "hover:bg-white/[0.04]")}>
+                    <AgentDot agent={s.agent} className="mt-[7px]" />
+                    <span className="min-w-0 flex-1">
+                      <span className={cx("block truncate text-[14px]", s.id === current ? "text-silk" : "text-silk-2 group-hover:text-silk")}>{s.title}</span>
+                      <span className="block truncate text-[12px] text-silk-3">copy, continue here · {ago(s.updatedAt)}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+          </ul>
+        </section>
       ))}
     </>
   );

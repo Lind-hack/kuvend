@@ -141,3 +141,25 @@ test("start with Windows: one small launcher in the Startup folder, and off remo
   assert.equal(fs.existsSync(where), false);
   assert.throws(() => autostart.setAutostart(true, { bin: "C:\\Users\\me\\AppData\\Local\\npm-cache\\_npx\\abc\\node_modules\\kuvend\\bin\\kuvend.mjs", platform: "win32" }), /npm i -g kuvend/);
 });
+
+test("a server at boot: a systemd user service that runs kuvend serve with this shell's PATH, and off removes it", () => {
+  const dir = tmp("kv-systemd-");
+  env({ KUVEND_SYSTEMD_DIR: dir, KUVEND_STARTUP_DIR: tmp("kv-startup-") });
+  const oldPath = process.env.PATH;
+  process.env.PATH = "/home/me/.nvm/versions/node/v22/bin:/usr/bin";
+  try {
+    const where = autostart.setAutostart(true, { bin: "/home/me/.npm-global/lib/node_modules/kuvend/bin/kuvend.mjs", platform: "linux", serve: true });
+    assert.equal(where, path.join(dir, "kuvend.service"));
+    const unit = fs.readFileSync(where, "utf8");
+    assert.match(unit, /kuvend\.mjs" serve\n/);
+    assert.match(unit, /Environment="PATH=\/home\/me\/\.nvm\/versions\/node\/v22\/bin:\/usr\/bin"/);
+    assert.match(unit, /Restart=always/);
+    assert.match(unit, /WantedBy=default\.target/);
+    assert.equal(autostart.autostartOn({ platform: "linux" }), true);
+    autostart.setAutostart(false, { platform: "linux" });
+    assert.equal(fs.existsSync(where), false);
+    assert.equal(autostart.autostartOn({ platform: "linux" }), false);
+  } finally {
+    process.env.PATH = oldPath;
+  }
+});

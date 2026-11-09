@@ -1,4 +1,7 @@
 # Kuvend on a server that stays on, so your chats keep going with your laptop off.
+# Simpler: as that user, `npm i -g kuvend && kuvend autostart on --serve` sets up a user service for you,
+# with your shell's PATH. Use this file only if you want a system unit. It needs node/npx, git, claude and
+# codex on the system PATH below (an nvm install isn't): add their folders to Environment=PATH.
 # Edit User= (a normal user that has claude/codex signed in, never root), then:
 #   sudo cp deploy/kuvend.service /etc/systemd/system/kuvend.service
 #   sudo systemctl daemon-reload && sudo systemctl enable --now kuvend
@@ -15,8 +18,9 @@ Type=simple
 User=kuvend
 WorkingDirectory=~
 Environment=NODE_ENV=production
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
 ExecStart=/usr/bin/env npx --yes kuvend@latest serve --port 4777 --route tailscale
-Restart=on-failure
+Restart=always
 RestartSec=5
 
 [Install]

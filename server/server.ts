@@ -544,6 +544,8 @@ export function createServer(port: number) {
         res.flushHeaders();
         ur.pipe(res);
       });
+      // A laptop that's off doesn't refuse, it just never answers: give up after a while instead of hanging.
+      up.setTimeout(20_000, () => up.destroy(new Error("timeout")));
       up.on("error", () => {
         if (!res.headersSent) res.writeHead(502, { "Content-Type": "application/json" }).end(JSON.stringify({ error: `${peer.name} isn't reachable right now.` }));
         else res.end();

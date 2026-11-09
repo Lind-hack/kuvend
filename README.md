@@ -50,7 +50,7 @@ Keep the terminal window open while you work. `Ctrl+C` stops Kuvend and any app 
 - On the phone, *Add to Home Screen* makes Kuvend open like an app. On an iPhone the home-screen app has its own storage, so it asks once for the short code shown under the QR (like `K7QD-M3XA`).
 - Phone and computer can use one chat at the same time: one turn runs at a time, the other device sees it live and is asked to wait.
 
-**Keep going with your laptop off.** Run Kuvend on a machine that stays on (a VPS, a spare PC) with `npx kuvend serve` and connect it under *Server*. From then on:
+**Keep going with your laptop off.** Kuvend and the agents run on your laptop, so with the laptop off (or asleep) there is nothing for a phone paired with *the laptop* to reach. For that you need a machine that stays on (a VPS, a spare PC): run Kuvend there with `kuvend serve`, connect it under *Server*, and pair your phone with **the server** (*Phone* shows that first once a server is connected). From then on:
 - **The server keeps a copy of every chat.** After each turn on the laptop, Kuvend sends the server what changed: the turns, the new lines of the agent's chat file, and only the changed files (uncommitted work too; `.gitignore`d files like `.env` stay home).
 - **One app on your phone: the server's.** It shows the server's chats and, while the laptop is on, the laptop's live chats too (passed through the server, live).
 - **Laptop off?** Its chats show as copies; *Continue here* takes one over and the agent picks up with the whole conversation. When the laptop is back, it sees the chat moved; *Bring it back* returns it to your project as a safe copy on its own branch.
@@ -83,9 +83,9 @@ See [Run Kuvend on a server](#run-kuvend-on-a-server).
 For chats that keep going while your laptop is off. On the server (Linux, as a normal user, never root):
 
 1. Install Node 20+, git, [Tailscale](https://tailscale.com) (signed in to the same account as your laptop and phone), and the agents you use, signed in once: `npm i -g @anthropic-ai/claude-code && claude`, `npm i -g @openai/codex && codex login`. Copy over the skills, `CLAUDE.md`/`AGENTS.md` and MCP servers you want there; the agents use the server's own setup.
-2. Start it: `npx kuvend serve`. It listens on `127.0.0.1` and on the server's private Tailscale address, and keeps remote access on.
-3. To keep it running, use the systemd unit in [`deploy/kuvend.service`](deploy/kuvend.service) (edit the user name, then `sudo cp deploy/kuvend.service /etc/systemd/system/ && sudo systemctl enable --now kuvend`).
-4. On the server, `npx kuvend code` prints its address and a one-time code. On your laptop: *Server*, *Connect*, address and code. Then *Pair your phone with it*.
+2. Install Kuvend and set it up as a service, in one go: `npm i -g kuvend && kuvend autostart on --serve`. That runs `kuvend serve` now, at every boot (no login needed) and again if it ever stops, with the same `PATH` as your shell, so `node`, `claude` and `codex` are found even when installed with nvm. It listens on `127.0.0.1` and on the server's private Tailscale address; if Tailscale isn't up yet at boot, it keeps trying every 30 seconds. Its output: `journalctl --user -u kuvend -f`. (Prefer a system unit? See [`deploy/kuvend.service`](deploy/kuvend.service).)
+3. On the server, `kuvend code` prints its address and a one-time code. On your laptop: *Server*, *Connect*, address and code.
+4. Then *Phone*, *Pair your phone with* your server, and add *that* page to your home screen. A phone paired with the laptop only works while the laptop is on; if you paired one before, remove that home-screen app and use the server's.
 
 Handed-over projects land in `~/.kuvend/projects/` on the server, each on its own `kuvend/from-…` branch. If the server's agent can't resume the chat file (a different CLI version), it is briefed with the conversation instead.
 
