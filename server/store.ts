@@ -154,7 +154,7 @@ export function rememberProject(dir: string) {
 // Other computers running Kuvend that this one can hand sessions to (a server that stays on).
 // role "server": a machine this one copies its chats to. role "laptop": the machine that copies to this one
 // (a server reaches its laptop through it, to show the laptop's live chats in one app).
-export type Peer = { id: string; name: string; url: string; token: string; addedAt: string; role?: "server" | "laptop"; linked?: boolean };
+export type Peer = { id: string; name: string; url: string; token: string; addedAt: string; role?: "server" | "laptop"; linked?: boolean | string }; // linked: the address this laptop gave the server
 const peersFile = () => path.join(home(), "peers.json");
 export function readPeers(): Peer[] {
   try {

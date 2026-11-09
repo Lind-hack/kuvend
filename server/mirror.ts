@@ -290,13 +290,16 @@ async function drain() {
 // Let the server reach this laptop too (its app then shows the laptop's live chats): turn on remote
 // access here (Tailscale only, so nothing becomes public) and pair the server with a fresh code.
 async function linkBack(peer: Peer) {
-  if (peer.linked || !serving) return;
+  if (!serving) return;
   let st = remote.status();
   if (!st.on) st = await remote.startRemote(serving.port, serving.handler, "tailscale").catch(() => st);
   if (!st.on || !st.url || st.route !== "tailscale") return;
+  // Linked already, at this address: nothing to do. A new address (Kuvend came up on another port): link again.
+  if (peer.linked === st.url) return;
+  const url = st.url;
   const { code } = remote.newPairingCode();
-  await peerCall(peer, "api/peers/reverse", { body: { url: st.url, code } })
-    .then(() => writePeers(readPeers().map((p) => (p.id === peer.id ? { ...p, linked: true } : p))))
+  await peerCall(peer, "api/peers/reverse", { body: { url, code } })
+    .then(() => writePeers(readPeers().map((p) => (p.id === peer.id ? { ...p, linked: url } : p))))
     .catch(() => {});
 }
 
@@ -314,4 +317,9 @@ export function startMirroring(port: number, handler: http.RequestListener) {
 }
 
 // The server pairs back with its laptop.
-export const linkFromLaptop = (url: string, code: string) => addPeer(url, code, "laptop");
+// The server pairs back with its laptop; a new address replaces the old one.
+export async function linkFromLaptop(url: string, code: string) {
+  const p = await addPeer(url, code, "laptop");
+  writePeers(readPeers().filter((x) => x.id === p.id || !(x.role === "laptop" && x.name === p.name)));
+  return p;
+}
