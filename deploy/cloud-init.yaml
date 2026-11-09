@@ -1,0 +1,46 @@
+#cloud-config
+# A Kuvend server in one paste, no terminal needed to set it up. When you create the server (Ubuntu
+# 24.04) at your hosting company, paste this whole file into the box called "User data" or
+# "Cloud config", after one change:
+#   - Replace TAILSCALE_AUTH_KEY below with a key from login.tailscale.com > Settings > Keys >
+#     "Generate auth key" (the defaults are fine).
+# A few minutes after the server starts, it shows up in your Tailscale app as "kuvend", with Kuvend
+# running on it. Then sign in to the agents and pair, as the README's phone guide says.
+
+users:
+  - default
+  - name: kuvend
+    shell: /bin/bash
+    lock_passwd: true
+
+package_update: true
+packages: [git, curl, ca-certificates]
+
+write_files:
+  - path: /etc/systemd/system/kuvend.service
+    content: |
+      [Unit]
+      Description=Kuvend, a workspace for Claude Code and Codex
+      Wants=network-online.target tailscaled.service
+      After=network-online.target tailscaled.service
+
+      [Service]
+      User=kuvend
+      WorkingDirectory=/home/kuvend
+      Environment=PATH=/home/kuvend/.local/bin:/usr/local/bin:/usr/bin:/bin
+      ExecStart=/usr/bin/kuvend serve --port 4777 --route tailscale
+      Restart=always
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  - curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+  - apt-get install -y nodejs
+  - npm install -g kuvend@latest @anthropic-ai/claude-code @openai/codex
+  - curl -fsSL https://tailscale.com/install.sh | sh
+  # --ssh: you can open a terminal on this server from the Tailscale admin page, in your phone's browser.
+  - tailscale up --authkey=TAILSCALE_AUTH_KEY --ssh --hostname=kuvend
+  - systemctl daemon-reload
+  - systemctl enable --now kuvend

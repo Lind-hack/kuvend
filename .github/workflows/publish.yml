@@ -1,0 +1,48 @@
+# Publishes Kuvend to npm whenever main has a version npm doesn't have yet. Nothing to run by hand:
+# merge a pull request that bumps "version" in package.json, and it goes out. (Or run it from the
+# Actions tab: "Publish to npm", "Run workflow".)
+#
+# It signs in to npm with "trusted publishing", so no npm token is stored anywhere. Set that up once on
+# npmjs.com: the kuvend package, Settings, Trusted Publisher, GitHub Actions, with
+#   Organization or user: Lind-hack   Repository: kuvend   Workflow filename: publish.yml
+name: Publish to npm
+
+on:
+  push:
+    branches: [main]
+    paths: [package.json]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # lets npm check this run really comes from this repository
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Is this version new?
+        id: check
+        run: |
+          v=$(node -p "require('./package.json').version")
+          if npm view "kuvend@$v" version >/dev/null 2>&1; then
+            echo "kuvend $v is already on npm: nothing to do."
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Publishing kuvend $v."
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.check.outputs.new == 'true'
+        run: npm install -g npm@latest # trusted publishing needs npm 11.5.1 or newer
+      - if: steps.check.outputs.new == 'true'
+        run: npm ci
+      - if: steps.check.outputs.new == 'true'
+        name: Git identity for the tests (they make commits in temporary folders)
+        run: git config --global user.email "ci@kuvend.invalid" && git config --global user.name "Kuvend CI"
+      - if: steps.check.outputs.new == 'true'
+        run: npm publish --provenance --access public # builds and tests first (prepublishOnly)

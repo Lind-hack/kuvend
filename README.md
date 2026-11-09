@@ -89,7 +89,19 @@ For chats that keep going while your laptop is off. On the server (Linux, as a n
 
 Handed-over projects land in `~/.kuvend/projects/` on the server, each on its own `kuvend/from-…` branch. If the server's agent can't resume the chat file (a different CLI version), it is briefed with the conversation instead.
 
+### Set it all up from your phone
+
+No laptop needed, except for one optional step at the end.
+
+1. **Tailscale.** Install the Tailscale app on your phone and sign in with the account your laptop uses. At [login.tailscale.com](https://login.tailscale.com), go to *Settings*, *Keys*, *Generate auth key*, and copy the key.
+2. **A server.** At a hosting company (Hetzner, DigitalOcean, …), create the smallest server with 2 GB of memory or more, running Ubuntu 24.04. Where it asks for *User data* / *Cloud config*, paste [`deploy/cloud-init.yaml`](deploy/cloud-init.yaml), with `TAILSCALE_AUTH_KEY` replaced by your key. A few minutes later, "kuvend" shows up in your Tailscale app, with Kuvend running on it.
+3. **Sign the agents in there.** At [login.tailscale.com](https://login.tailscale.com), go to *Machines*, then *kuvend*, *SSH*, as user `kuvend`. A terminal opens in your browser. Run `claude` and follow its sign-in link, then do the same with `codex login --device-auth` if you use Codex. Then run `kuvend code`.
+4. **Pair your phone.** With Tailscale on, open the address `kuvend code` printed and type its code. *Add to Home Screen*. That app works with your laptop off.
+5. *(Optional, the next time the laptop is on)* On the laptop, go to *Server*, *Connect*, and enter a fresh `kuvend code`. From then on the server keeps copies of your laptop's chats, so you can continue them from your phone with the laptop off.
+
 ## Develop
+
+New versions go to npm by themselves: merging a change to `main` that bumps `version` in `package.json` runs [`.github/workflows/publish.yml`](.github/workflows/publish.yml). It signs in with npm's trusted publishing, which needs one setting on npmjs.com: the package's *Settings*, *Trusted Publisher*, *GitHub Actions*, with `Lind-hack`, `kuvend` and `publish.yml`.
 
 ```bash
 npm install
