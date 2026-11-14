@@ -131,7 +131,15 @@ export function pair(code: string, name: string): { token: string; id: string } 
 
 // ---------- which Host headers are this machine's remote routes ----------
 
-export const isRemoteHost = (host: string) => st.hosts.has(host.toLowerCase());
+// A server can also sit behind its own HTTPS tunnel at a fixed name (KUVEND_PUBLIC_HOST, e.g. a Cloudflare
+// tunnel with Cloudflare Access in front). That name always counts as a phone route: paired keys only.
+export function publicHost(): string | null {
+  const h = (process.env.KUVEND_PUBLIC_HOST ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+  return /^[a-z0-9.-]+(:\d+)?$/.test(h) ? h : null;
+}
+export const publicUrl = () => (publicHost() ? `https://${publicHost()}/` : null);
+
+export const isRemoteHost = (host: string) => st.hosts.has(host.toLowerCase()) || (!!host && host.toLowerCase() === publicHost());
 
 export function status() {
   return {

@@ -338,9 +338,10 @@ route("POST", "/api/remote/stop", async (req) => {
 // Any paired device may add another (it can already do everything a phone can); removing stays laptop-only.
 route("POST", "/api/remote/code", async () => {
   const s = remote.status();
-  if (!s.on || !s.url) throw new HttpError(409, "Turn on phone access first");
+  const url = remote.publicUrl() ?? (s.on ? s.url : null);
+  if (!url) throw new HttpError(409, "Turn on phone access first");
   const { code, short, expiresAt } = remote.newPairingCode();
-  return { url: s.url, code, short, expiresAt };
+  return { url, code, short, expiresAt };
 });
 route("DELETE", "/api/remote/devices/(d[0-9a-f]{10})", async (req, m) => {
   laptopOnly(req);
@@ -498,7 +499,8 @@ export function createServer(port: number) {
   const handler: http.RequestListener = async (req, res) => {
     const url = new URL(req.url ?? "/", `http://127.0.0.1:${port}`);
     const host = (req.headers.host ?? "").toLowerCase();
-    const local = hosts.has(host);
+    // A request a tunnel forwarded (Cloudflare adds cf-connecting-ip) is never local, whatever its Host says.
+    const local = hosts.has(host) && !req.headers["cf-connecting-ip"];
     // A name that resolves here (DNS rebinding) still carries its own Host header: refuse it. The only
     // other names answered are this machine's own phone routes, while phone access is on.
     if (!local && !remote.isRemoteHost(host)) return res.writeHead(421).end();

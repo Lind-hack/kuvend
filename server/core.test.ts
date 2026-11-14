@@ -264,3 +264,43 @@ test("continue on phone: a one-time code pairs one phone, and a phone's key is a
     server.close();
   }
 });
+
+test("public URL: a server behind its own tunnel answers its public name, but only to paired phones", async () => {
+  const remote = await import("./remote.js");
+  process.env.KUVEND_PUBLIC_HOST = "https://Kuvend.Example.com/";
+  const probe = createServer(0);
+  await new Promise<void>((r) => probe.listen(0, "127.0.0.1", r));
+  const port = (probe.address() as { port: number }).port;
+  probe.close();
+  const server = createServer(port);
+  await new Promise<void>((r) => server.listen(port, "127.0.0.1", r));
+  const laptop = accessToken();
+  const call = (p: string, headers: Record<string, string>, method = "GET") =>
+    new Promise<{ status: number; body: string }>((resolve) => {
+      const req = http.request({ host: "127.0.0.1", port, path: p, method, headers }, (res) => {
+        let body = "";
+        res.on("data", (c) => (body += c));
+        res.on("end", () => resolve({ status: res.statusCode ?? 0, body }));
+      });
+      req.end(method === "POST" ? "{}" : undefined);
+    });
+  try {
+    const pub = "kuvend.example.com";
+    const local = `127.0.0.1:${port}`;
+    // The tunnel delivers to 127.0.0.1 with the public name as Host, with no phone route switched on.
+    assert.equal((await call("/", { Host: pub })).status, 200, "the page loads on the public name");
+    assert.equal((await call("/api/remote", { Host: pub, "x-kuvend-token": laptop })).status, 401, "this install's own key doesn't work over the public name");
+    const code = await call("/api/remote/code", { Host: local, "x-kuvend-token": laptop }, "POST");
+    assert.equal(code.status, 200, "a pairing code can be shown although no phone route is on");
+    assert.equal(JSON.parse(code.body).url, "https://kuvend.example.com/", "the code points the phone at the public URL");
+    const phone = remote.pair(JSON.parse(code.body).code, "iPhone");
+    assert.equal((await call("/api/remote", { Host: pub, "x-kuvend-token": phone.token })).status, 200, "the paired phone gets in");
+    assert.equal((await call("/api/remote", { Host: pub, Origin: "https://kuvend.example.com", "x-kuvend-token": phone.token })).status, 200, "from its own page");
+    // Anything that came through Cloudflare is remote, even if it claims to be 127.0.0.1.
+    assert.ok([401, 421].includes((await call("/api/remote", { Host: local, "cf-connecting-ip": "203.0.113.9", "x-kuvend-token": laptop })).status), "a forwarded request can't use the local key");
+    assert.equal((await call("/api/remote", { Host: "kuvend.example.com.evil.test", "x-kuvend-token": phone.token })).status, 421, "other names stay refused");
+  } finally {
+    delete process.env.KUVEND_PUBLIC_HOST;
+    server.close();
+  }
+});
