@@ -111,6 +111,8 @@ function readToken(): string {
 }
 
 export let token = readToken();
+// Ask the browser to keep this storage (and so the phone's key) instead of clearing it under pressure.
+if (token) void navigator.storage?.persist?.().catch(() => {});
 
 // Trade the one-time code for this phone's own key, and keep it in this browser.
 export async function pairPhone(code: string): Promise<void> {
@@ -126,6 +128,7 @@ export async function pairPhone(code: string): Promise<void> {
   } catch {
     /* private window: this tab still works */
   }
+  void navigator.storage?.persist?.().catch(() => {});
 }
 
 export type RemoteDevice = { id: string; name: string; createdAt: string; lastSeenAt: string | null };

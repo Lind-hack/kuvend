@@ -120,6 +120,19 @@ if (sub === "autostart") {
   }
   const serve = sub === "serve";
 
+  // One Kuvend per computer. A second `npx kuvend` used to move to the next free port, and a phone's
+  // home-screen app keeps its key per address (host and port), so it lost its sign-in. Open the running one.
+  // running.json can be stale (the last copy that started may be gone), so also try the usual port, and only
+  // count a Kuvend that accepts this install's key.
+  const alreadyRunning = async (): Promise<number | null> => {
+    const ports = [...new Set([readRunning()?.port, port].filter((p): p is number => typeof p === "number"))];
+    for (const p of ports) {
+      const res = await fetch(`http://127.0.0.1:${p}/api/state`, { headers: { "x-kuvend-token": accessToken() }, signal: AbortSignal.timeout(3000) }).catch(() => null);
+      if (res?.ok) return p;
+    }
+    return null;
+  };
+
   const listen = (at: number, triesLeft: number) => {
     const server = createServer(at);
     server.once("error", (e: NodeJS.ErrnoException) => {
@@ -149,7 +162,14 @@ if (sub === "autostart") {
       if (!serve && !flag("--no-open")) open(url);
     });
   };
-  listen(port, 10);
+  (async () => {
+    const running = serve || chosen ? null : await alreadyRunning();
+    if (running === null) return listen(port, 10);
+    const url = `http://127.0.0.1:${running}/${project ? `?project=${encodeURIComponent(project)}` : ""}#token=${accessToken()}`;
+    console.log(`\n  Kuvend is already running on this computer.\n\n  ${url}\n`);
+    if (!flag("--no-open")) open(url);
+    process.exit(0);
+  })();
 
   const quit = () => {
     stopAll();
