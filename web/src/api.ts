@@ -67,7 +67,7 @@ export type MirrorOf = { name: string; at: string; takenAt?: string };
 
 export type Project = { path: string; name: string; repo: boolean; commits: boolean; branch: string | null; run: string | null; notes: boolean };
 export type SessionSummary = { id: string; title: string; project: string; agent: AgentId; branch?: string; turns: number; running: boolean; updatedAt: string; from: string | null; sentTo: { name: string; url: string } | null; mirrorOf?: MirrorOf | null };
-export type AppState = { agents: Record<AgentId, { installed: boolean; version?: string }>; projects: Project[]; sessions: SessionSummary[]; machine: string };
+export type AppState = { agents: Record<AgentId, { installed: boolean; version?: string; signedIn?: boolean }>; projects: Project[]; sessions: SessionSummary[]; machine: string };
 // A Claude Code or Codex chat from the terminal (or their apps) on this computer.
 export type Chat = { agent: AgentId; id: string; cwd: string; title: string; last: string; updatedAt: string; size: number; here: boolean; session: string | null };
 // Another computer running Kuvend, usually a server that stays on.

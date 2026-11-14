@@ -73,7 +73,7 @@ export function pushAll(): Promise<Record<string, PushStatus>> {
 // What counts as a change: only the synced parts of each folder (Claude Code writes chat history and
 // caches under ~/.claude all the time; those must not start a sync).
 const WATCH: [string, RegExp][] = [
-  [".claude", /^(skills|agents|commands|rules|output-styles|hooks|statusline|plugins[\\/](cache|marketplaces|installed_plugins\.json|known_marketplaces\.json))([\\/]|$)|^(CLAUDE\.md|settings\.json)$/],
+  [".claude", /^(skills|agents|commands|rules|output-styles|hooks|statusline|plugins[\\/](cache|marketplaces|installed_plugins\.json|known_marketplaces\.json|blocklist\.json))([\\/]|$)|^(CLAUDE\.md|settings\.json)$/],
   [".codex", /^(skills|prompts|rules|scripts)([\\/]|$)|^(AGENTS\.md|config\.toml|hooks\.json)$/],
   [path.join(".config", "opencode"), /^(skills|plugins|agents?|commands?)([\\/]|$)|^(opencode\.jsonc?|AGENTS\.md)$/],
   [path.join(".agents", "skills"), /./],

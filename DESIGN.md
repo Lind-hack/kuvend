@@ -13,6 +13,7 @@ colors:
   silk-3: "#7f8595"
   claude: "#e9a07c"
   codex: "#93bbeb"
+  opencode: "#b7a6ea"
   go: "#79d79b"
   warn: "#f1b45a"
   clip: "#f06a55"
@@ -155,7 +156,7 @@ The metaphor is the take. Each message sent to an agent becomes a numbered take 
 
 ## Colors
 
-Neutral-dominant anodized charcoal with cream type. The only chromatic colours are two channel caps (clay for Claude Code, steel blue for Codex) that identify agents, and a three-step signal set (green, amber, red) that carries state.
+Neutral-dominant anodized charcoal with cream type. The only chromatic colours are three channel caps (clay for Claude Code, steel blue for Codex, lilac for OpenCode) that identify agents, and a three-step signal set (green, amber, red) that carries state.
 
 ### Primary
 - **Silk** (#e8e0cc, `silk`): the action fill. Primary buttons and the selected mode in the mode switch take silk fill with desk-coloured text. Page body text is silk too.
@@ -163,6 +164,7 @@ Neutral-dominant anodized charcoal with cream type. The only chromatic colours a
 ### Secondary
 - **Clay cap** (#d98a63, `claude`): Claude Code's channel. Its scribble square, its take card's top edge, its session dot and its channel outline in the new-session form.
 - **Steel cap** (#8fb3d9, `codex`): Codex's channel. It is also the link colour for run URLs and for links inside agent replies.
+- **Lilac cap** (#b7a6ea, `opencode`): OpenCode's channel (v0.4). Same uses as the clay cap; never a link or state colour.
 
 ### Tertiary
 - **Meter green** (#7ccf8e, `go`): ok, installed, saved, the lower meter segments, LEDs that are on and healthy.
@@ -357,5 +359,5 @@ Plain, calm and exact. No hype, no exclamation marks, no emoji, and no invented 
 - **Empty states say what to do next:** "The tape is empty." followed by the instruction.
 - **Objects, not metaphors on controls:** take, tape, channel, second listen, cap. "Mixdown" is code-only.
 - **Undo, not drop:** controls say Undo. "Drop" appears only in prose (the Launch lede and the empty-tape text). Prefer Undo.
-- **Channel names:** "Claude Code" and "Codex" in full in headings and labels. The composer's channel tray shortens to "Claude" and "Codex". Do not invent a third name.
+- **Channel names:** "Claude Code", "Codex" and "OpenCode" in full in headings and labels. The composer's channel tray shortens to "Claude", "Codex" and "OpenCode". Do not invent another name.
 - **Typographic marks:** straight apostrophes in copy, "…" for truncation, "−" (U+2212) for a removed line, "·" between meta items, and "~" before an estimated cost.

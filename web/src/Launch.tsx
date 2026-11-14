@@ -10,6 +10,8 @@ const INSTALL: Record<AgentId, { cmd: string; login: string }> = {
   codex: { cmd: "npm install -g @openai/codex", login: "codex login" },
   opencode: { cmd: "npm install -g @opencode/cli", login: "opencode auth login" },
 };
+// On a server that stays on, Claude Code wants a long-lived token (a normal sign-in ends after a few weeks).
+const SIGN_IN: Record<AgentId, string> = { claude: "claude setup-token", codex: "codex login --device-auth", opencode: "opencode auth login" };
 
 export function CopyLine({ text }: { text: string }) {
   const [done, setDone] = useState(false);
@@ -166,6 +168,7 @@ export function Launch({ state, onOpen, initialProject, onNav, onSheet }: { stat
     setBusy("");
   }
   const missing = state ? AGENTS.filter((a) => !state.agents[a]?.installed) : [];
+  const signedOut = state ? AGENTS.filter((a) => state.agents[a]?.installed && state.agents[a]?.signedIn === false) : [];
 
   return (
     <div className="h-dvh overflow-y-auto">
@@ -258,6 +261,16 @@ export function Launch({ state, onOpen, initialProject, onNav, onSheet }: { stat
                 Set {missing.length === 1 ? "it" : "them"} up
               </button>
             </p>
+          </div>
+        )}
+        {signedOut.length > 0 && (
+          <div className="plate flex flex-col gap-2 rounded-[18px] p-4">
+            <p className="text-[14px] text-silk-2">
+              {signedOut.map((a) => AGENT_NAME[a]).join(" and ")} {signedOut.length === 1 ? "isn't" : "aren't"} signed in on {state?.machine ?? "this computer"}. In a terminal there, run once:
+            </p>
+            {signedOut.map((a) => (
+              <CopyLine key={a} text={SIGN_IN[a]} />
+            ))}
           </div>
         )}
 

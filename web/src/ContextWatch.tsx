@@ -24,7 +24,10 @@ export function ContextWatch({ turns, agent, running, onCompact }: { turns: Turn
   const own = [...turns].reverse().filter((t) => t.usage && t.agent === agent && t.kind === "chat");
   const turn = own[0];
   // A turn that didn't report the window (a /compact) keeps the one the agent reported before.
-  const u = turn?.usage ? { ...turn.usage, window: turn.usage.window ?? own.find((t) => t.usage?.window)?.usage?.window ?? null } : undefined;
+  // A turn that only read the cache keeps it warm for the TTL the agent reported when it wrote it.
+  const u = turn?.usage
+    ? { ...turn.usage, window: turn.usage.window ?? own.find((t) => t.usage?.window)?.usage?.window ?? null, ttlSec: turn.usage.ttlSec ?? (turn.usage.cacheRead > 0 ? (own.find((t) => t.usage?.ttlSec)?.usage?.ttlSec ?? null) : null) }
+    : undefined;
   const [now, setNow] = useState(() => Date.now());
   const [open, setOpen] = useState(false);
   const left = u ? cacheLeft(u, turn?.endedAt, now) : null;

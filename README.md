@@ -82,10 +82,14 @@ See [Run Kuvend on a server](#run-kuvend-on-a-server).
 
 For chats that keep going while your laptop is off. On the server (Linux, as a normal user, never root):
 
-1. Install Node 20+, git, [Tailscale](https://tailscale.com) (signed in to the same account as your laptop and phone), and the agents you use, signed in once: `npm i -g @anthropic-ai/claude-code && claude`, `npm i -g @openai/codex && codex login`. Copy over the skills, `CLAUDE.md`/`AGENTS.md` and MCP servers you want there; the agents use the server's own setup.
+1. Install Node 20+, git, [Tailscale](https://tailscale.com) (signed in to the same account as your laptop and phone), and the agents you use: `npm i -g @anthropic-ai/claude-code @openai/codex @opencode/cli`. Sign in once: `claude setup-token` (a long-lived token: a normal sign-in ends after a few weeks; put it in the service as `CLAUDE_CODE_OAUTH_TOKEN`), `codex login --device-auth`. OpenCode's free models (DeepSeek V4.1 Flash is the default) need no sign-in.
 2. Start it: `npx kuvend serve`. It listens on `127.0.0.1` and on the server's private Tailscale address, and keeps remote access on.
 3. To keep it running, use the systemd unit in [`deploy/kuvend.service`](deploy/kuvend.service) (edit the user name, then `sudo cp deploy/kuvend.service /etc/systemd/system/ && sudo systemctl enable --now kuvend`).
 4. On the server, `npx kuvend code` prints its address and a one-time code. On your laptop: *Server*, *Connect*, address and code. Then *Pair your phone with it*.
+
+**Your setup follows you.** Once connected, your laptop's Kuvend copies your skills, agents, commands, `CLAUDE.md`/`AGENTS.md`, settings and hooks, MCP servers (with their keys), plugins and OpenCode's config to the server: after you change them, every hour, or now with `kuvend sync`. Only changed files travel. Sign-ins, chat history and environments built for your laptop (`node_modules`, Python venvs, browsers) stay; hooks and MCP servers that only run on Windows are left out. *Your server* lists both.
+
+**A public address (optional).** To reach the server without Tailscale on your phone, put it behind an HTTPS tunnel you control (for example a Cloudflare tunnel with Cloudflare Access in front) and start it with `KUVEND_PUBLIC_HOST=kuvend.example.com`. That name only accepts paired phones; pairing codes then point at it.
 
 Handed-over projects land in `~/.kuvend/projects/` on the server, each on its own `kuvend/from-…` branch. If the server's agent can't resume the chat file (a different CLI version), it is briefed with the conversation instead.
 

@@ -299,6 +299,10 @@ test("public URL: a server behind its own tunnel answers its public name, but on
     // Anything that came through Cloudflare is remote, even if it claims to be 127.0.0.1.
     assert.ok([401, 421].includes((await call("/api/remote", { Host: local, "cf-connecting-ip": "203.0.113.9", "x-kuvend-token": laptop })).status), "a forwarded request can't use the local key");
     assert.equal((await call("/api/remote", { Host: "kuvend.example.com.evil.test", "x-kuvend-token": phone.token })).status, 421, "other names stay refused");
+    // Setup sync writes settings with hooks, which the server runs: only the linked laptop may send it.
+    assert.equal((await call("/api/sync/plan", { Host: pub, "x-kuvend-token": phone.token }, "POST")).status, 403, "a phone can't change the server's setup");
+    assert.equal((await call("/api/sync/apply", { Host: pub, "x-kuvend-token": phone.token }, "POST")).status, 403);
+    assert.equal((await call("/api/sync", { Host: pub, "x-kuvend-token": phone.token })).status, 200, "but it can see the report");
   } finally {
     delete process.env.KUVEND_PUBLIC_HOST;
     server.close();

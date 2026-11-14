@@ -335,11 +335,13 @@ function SetupSync({ servers }: { servers: Peer[] }) {
   if (!info) return null;
   const rows: { name: string; st: PushStatus | null }[] = servers.length ? servers.map((p) => ({ name: p.name, st: info.pushed?.[p.id] ?? null })) : info.report ? [{ name: "", st: { at: info.report.at, ok: true, report: info.report } }] : [];
   if (!rows.length) return null;
+  // The report is stored on disk and may come from an older Kuvend: every count is optional.
   const sum = (r: SyncReport) => {
-    const c = r.counts;
-    return `${c.claudeSkills + c.codexSkills + c.opencodeSkills + c.sharedSkills} skills · ${c.plugins} plugins · ${c.mcp} MCP · ${c.hooks} hooks`;
+    const c = r?.counts ?? ({} as Partial<SyncReport["counts"]>);
+    const n = (k: keyof SyncReport["counts"]) => c[k] ?? 0;
+    return `${n("claudeSkills") + n("codexSkills") + n("opencodeSkills") + n("sharedSkills")} skills · ${n("plugins")} plugins · ${n("mcp")} MCP · ${n("hooks")} hooks`;
   };
-  async function now() {
+  async function copyNow() {
     setBusy(true);
     setError("");
     try {
@@ -350,39 +352,39 @@ function SetupSync({ servers }: { servers: Peer[] }) {
     setBusy(false);
     load();
   }
-  const left = rows.flatMap((r) => r.st?.report?.skipped ?? []);
-  const env = [...new Set(rows.flatMap((r) => r.st?.report?.envDirs ?? []))];
+  const skipped = rows.flatMap((r) => r.st?.report?.skipped ?? []);
+  const envDirs = [...new Set(rows.flatMap((r) => r.st?.report?.envDirs ?? []))];
   return (
     <section className="mt-5 flex flex-col gap-2 border-t border-rule pt-5">
       <h3 className="text-[15px] font-medium">{servers.length ? "Your setup on the server" : "Setup from your laptop"}</h3>
-      <p className="text-[13px] leading-relaxed text-silk-3">Skills, agents, commands, CLAUDE.md and AGENTS.md, settings and hooks, MCP servers with their keys, plugins and OpenCode's config. Copied after you change them, and hourly. Logins and chat history never leave this computer.</p>
+      <p className="text-[13px] leading-relaxed text-silk-3">Skills, agents, commands, CLAUDE.md and AGENTS.md, settings and hooks, MCP servers with their keys, plugins and OpenCode's config. Copied after you change them, and hourly. Your Claude Code and Codex sign-ins and your chat history never leave this computer; the keys your MCP servers use do go, so they work there.</p>
       {rows.map(({ name, st }) => (
         <p key={name || "here"} className="text-[13.5px]">
           {name && <span className="font-medium">{name}: </span>}
           {!st ? <span className="text-silk-3">not copied yet</span> : st.ok && st.report ? <span className="text-silk-2">{ago(st.at)} · {sum(st.report)}</span> : <span className="text-clip">{st.error}</span>}
         </p>
       ))}
-      {(left.length > 0 || env.length > 0) && (
+      {(skipped.length > 0 || envDirs.length > 0) && (
         <button type="button" className="self-start text-[13px] text-silk-3 underline underline-offset-4 hover:text-silk" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-          {left.length} left out, {env.length} to rebuild there
+          {skipped.length} left out, {envDirs.length} to rebuild there
         </button>
       )}
       {open && (
         <div className="flex flex-col gap-2 rounded-[12px] bg-black/25 p-3 text-[12.5px] text-silk-2">
-          {left.length > 0 && (
+          {skipped.length > 0 && (
             <ul className="list-disc space-y-0.5 pl-4">
-              {left.map((s, i) => (
+              {skipped.map((s, i) => (
                 <li key={i}>
                   <span className="font-mono">{s.what}</span>: {s.why}
                 </li>
               ))}
             </ul>
           )}
-          {env.length > 0 && <p>Their packages stay on this computer; install them on the server once: {env.map((d) => <code key={d} className="mr-1 font-mono">{d}</code>)}</p>}
+          {envDirs.length > 0 && <p>Their packages stay on this computer; install them on the server once: {envDirs.map((d) => <code key={d} className="mr-1 font-mono">{d}</code>)}</p>}
         </div>
       )}
       {servers.length > 0 && (
-        <Button size="sm" className="self-start" disabled={busy} onClick={() => void now()} icon={busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : undefined}>
+        <Button size="sm" className="self-start" disabled={busy} onClick={() => void copyNow()} icon={busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : undefined}>
           {busy ? "Copying…" : "Copy now"}
         </Button>
       )}

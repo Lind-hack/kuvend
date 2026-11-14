@@ -51,6 +51,8 @@ const MAX_FILE = 25 * 1024 * 1024;
 
 const winOnly = (cmd: unknown) => typeof cmd === "string" && (/\.(exe|cmd|bat|ps1)\b/i.test(cmd) || /^\s*["']?(powershell|pwsh|cmd)(\.exe)?["']?(\s|$)/i.test(cmd));
 const short = (s: string) => s.replace(/\s+/g, " ").slice(0, 80);
+// The program a TOML line runs: `command = "x"` or `notify = ["x", …]`.
+const tomlProgram = (line: string) => line.match(/=\s*\[?\s*(?:"((?:[^"\\]|\\.)*)"|'([^']*)')/)?.slice(1).find((v) => v !== undefined) ?? "";
 
 // This home's paths, however a config writes them (C:\Users\x, C:/Users/x, C:\\Users\\x), pointed at the server's.
 function homeMapper(src: string, dest: string) {
@@ -128,7 +130,7 @@ function codexToml(text: string, map: (s: string) => string, skipped: SyncReport
     let lines = b.lines;
     if (b.header === null) {
       lines = lines.filter((l) => {
-        if (/^\s*notify\s*=/.test(l) && winOnly(l)) {
+        if (/^\s*notify\s*=/.test(l) && winOnly(tomlProgram(l))) {
           skipped.push({ what: "Codex notify", why: "runs a Windows program" });
           return false;
         }
@@ -140,7 +142,7 @@ function codexToml(text: string, map: (s: string) => string, skipped: SyncReport
         const name = m[1].replace(/^["']|["']$/g, "");
         if (m[2] === "]") {
           const cmd = b.lines.find((l) => /^\s*command\s*=/.test(l)) ?? "";
-          if (winOnly(cmd)) {
+          if (winOnly(tomlProgram(cmd))) {
             dropped.add(name);
             skipped.push({ what: `Codex MCP ${name}`, why: "runs a Windows program" });
           } else mcp++;
@@ -209,10 +211,21 @@ export function collect(src: string, dest: string): Bundle {
 
   const exists = (rel: string) => fs.existsSync(path.join(src, rel));
   const text = (rel: string) => fs.readFileSync(path.join(src, rel), "utf8");
+  // One unreadable config is reported and left out; it never stops the rest of the sync.
+  const json = (rel: string, use: (j: any) => void) => {
+    if (!exists(rel)) return;
+    let j: any;
+    try {
+      j = readJson(path.join(src, rel)) ?? {};
+    } catch {
+      skipped.push({ what: rel, why: "couldn't be read (not valid JSON)" });
+      return;
+    }
+    if (typeof j === "object") use(j);
+  };
   for (const rel of [".claude/CLAUDE.md", ".codex/AGENTS.md", ".config/opencode/AGENTS.md", ".claude/plugins/blocklist.json"]) if (exists(rel)) put(rel, fs.readFileSync(path.join(src, rel)));
 
-  if (exists(".claude/settings.json")) {
-    const s = readJson(path.join(src, ".claude/settings.json"));
+  json(".claude/settings.json", (s) => {
     if (s.hooks) {
       const f = filterHooks(s.hooks, "", skipped);
       s.hooks = f.hooks;
@@ -223,33 +236,31 @@ export function collect(src: string, dest: string): Bundle {
       delete s.statusLine;
     }
     put(".claude/settings.json", JSON.stringify(mapStrings(s, map), null, 2));
-  }
-  if (exists(".claude.json")) {
+  });
+  json(".claude.json", (cj) => {
     const servers: Record<string, any> = {};
-    for (const [name, v] of Object.entries<any>(readJson(path.join(src, ".claude.json")).mcpServers ?? {})) {
+    for (const [name, v] of Object.entries<any>(cj.mcpServers ?? {})) {
       if (winOnly(v?.command)) skipped.push({ what: `Claude MCP ${name}`, why: "runs a Windows program" });
       else servers[name] = v;
     }
     counts.mcp += Object.keys(servers).length;
     put(MCP, JSON.stringify(mapStrings(servers, map), null, 2));
-  }
-  for (const rel of [".claude/plugins/installed_plugins.json", ".claude/plugins/known_marketplaces.json"]) {
-    if (!exists(rel)) continue;
-    const j = readJson(path.join(src, rel));
-    if (rel.endsWith("installed_plugins.json")) counts.plugins = Object.keys(j.plugins ?? {}).length;
-    put(rel, JSON.stringify(mapStrings(j, map), null, 2));
-  }
+  });
+  for (const rel of [".claude/plugins/installed_plugins.json", ".claude/plugins/known_marketplaces.json"])
+    json(rel, (j) => {
+      if (rel.endsWith("installed_plugins.json")) counts.plugins = Object.keys(j.plugins ?? {}).length;
+      put(rel, JSON.stringify(mapStrings(j, map), null, 2));
+    });
   if (exists(".codex/config.toml")) {
     const t = codexToml(text(".codex/config.toml"), map, skipped);
     counts.mcp += t.mcp;
     put(".codex/config.toml", t.text);
   }
-  if (exists(".codex/hooks.json")) {
-    const j = readJson(path.join(src, ".codex/hooks.json"));
+  json(".codex/hooks.json", (j) => {
     const f = filterHooks(j.hooks, "Codex ", skipped);
     counts.hooks += f.kept;
     put(".codex/hooks.json", JSON.stringify(mapStrings({ ...j, hooks: f.hooks }, map), null, 2));
-  }
+  });
   for (const rel of [".config/opencode/opencode.json", ".config/opencode/opencode.jsonc"]) {
     if (!exists(rel)) continue;
     try {

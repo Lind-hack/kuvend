@@ -167,6 +167,22 @@ test("apply: only what changed travels, MCP servers merge into the server's own 
   assert.equal(sync.lastReport()?.counts.claudeSkills, 4);
 });
 
+test("review fixes: PowerShell/cmd as a TOML value is Windows-only, and one unreadable file doesn't stop the sync", () => {
+  const src = fs.mkdtempSync(path.join(os.tmpdir(), "kuvend-src-"));
+  put(src, ".codex/config.toml", ['notify = ["powershell", "-File", "n.ps"]', "[mcp_servers.win]", 'command = "cmd"', 'args = ["/c", "x"]', "[mcp_servers.ok]", 'command = "npx"'].join("\n"));
+  put(src, ".claude.json", "null");
+  put(src, ".claude/plugins/installed_plugins.json", "{ not json");
+  put(src, ".claude/settings.json", "null");
+  put(src, ".claude/skills/a/SKILL.md", "---\nname: a\n---\n");
+  const b = sync.collect(src, "/home/kuvend");
+  const toml = sync.read(b, ".codex/config.toml").toString();
+  assert.doesNotMatch(toml, /notify|mcp_servers\.win/);
+  assert.match(toml, /mcp_servers\.ok/);
+  assert.ok(b.files.has(".claude/skills/a/SKILL.md"), "the rest still goes");
+  const why = b.report.skipped.map((s) => s.what).join(" | ");
+  assert.match(why, /installed_plugins\.json/);
+});
+
 test("apply refuses paths outside the synced folders", () => {
   const dest = fs.mkdtempSync(path.join(os.tmpdir(), "kuvend-dest-"));
   const bad = (p: string) => assert.throws(() => sync.apply(dest, { files: [{ path: p, data: "eA==", secret: false }], manifest: [{ path: p, sha: "x", size: 1 }], report: null }), /not a synced/, p);

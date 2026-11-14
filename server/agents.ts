@@ -323,16 +323,31 @@ export function modelSuggestions(): Record<AgentId, string[]> {
   return { claude: ["opus", "sonnet", "haiku"], codex, opencode: [OPENCODE_MODEL, "opencode/deepseek-v4.1-flash", "opencode/deepseek-v4-pro"] };
 }
 
-// Which agents are installed and their versions, for the launch screen.
-// Checked once a minute at most: starting both CLIs takes a few seconds.
-let detected: { at: number; value: Promise<Record<AgentId, { installed: boolean; version?: string }>> } | null = null;
-export function detectAgents(): Promise<Record<AgentId, { installed: boolean; version?: string }>> {
+// Which agents are installed, their versions, and whether they're signed in here, for the launch screen.
+// Checked once a minute at most: starting the CLIs takes a few seconds.
+// signedIn: false = installed but not signed in on this computer; undefined = couldn't tell.
+export type AgentInfo = { installed: boolean; version?: string; signedIn?: boolean };
+let detected: { at: number; value: Promise<Record<AgentId, AgentInfo>> } | null = null;
+export function detectAgents(): Promise<Record<AgentId, AgentInfo>> {
   if (!detected || Date.now() - detected.at > 60_000) detected = { at: Date.now(), value: detectNow() };
   return detected.value;
 }
 
-async function detectNow(): Promise<Record<AgentId, { installed: boolean; version?: string }>> {
-  const [c, x, o] = await Promise.all(["claude", "codex", "opencode"].map((cmd) => run(cmd, ["--version"], { timeoutMs: 20_000 })));
-  const v = (r: { ok: boolean; out: string }) => ({ installed: r.ok, version: r.ok ? r.out.trim().split("\n")[0] : undefined });
-  return { claude: v(c), codex: v(x), opencode: v(o) };
+async function detectNow(): Promise<Record<AgentId, AgentInfo>> {
+  const [c, x, o, ca, xa] = await Promise.all([
+    run("claude", ["--version"], { timeoutMs: 20_000 }),
+    run("codex", ["--version"], { timeoutMs: 20_000 }),
+    run("opencode", ["--version"], { timeoutMs: 20_000 }),
+    run("claude", ["auth", "status"], { timeoutMs: 20_000 }),
+    run("codex", ["login", "status"], { timeoutMs: 20_000 }),
+  ]);
+  const v = (r: { ok: boolean; out: string }, signedIn?: boolean): AgentInfo => ({ installed: r.ok, version: r.ok ? r.out.trim().split("\n")[0] : undefined, signedIn: r.ok ? signedIn : undefined });
+  let claudeIn: boolean | undefined;
+  try {
+    claudeIn = JSON.parse(ca.out)?.loggedIn === true;
+  } catch {
+    claudeIn = undefined;
+  }
+  // OpenCode's free models need no sign-in.
+  return { claude: v(c, claudeIn), codex: v(x, xa.ok ? /logged in/i.test(xa.out) : undefined), opencode: v(o, true) };
 }

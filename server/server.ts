@@ -255,13 +255,22 @@ route("GET", "/api/commands", async (_r, _m, url) => ({ commands: listCommands(a
 // Your setup (skills, MCP, hooks, CLAUDE.md…), the same on the server. The laptop asks for this machine's
 // home, sends a manifest, then only the files that changed (sync.ts). `push` is the laptop's own button.
 const SYNC_MAX = 32 * 1024 * 1024;
+// Settings carry hooks, which this machine runs: only this computer itself, or the laptop it's linked to
+// (paired under its machine name), may change them. A phone can read the report.
+const fromLaptop = (req: http.IncomingMessage) => {
+  if (caller.get(req) === "laptop") return;
+  const name = remote.devices().find((d) => d.id === phoneOf.get(req))?.name;
+  if (!name || !readPeers().some((p) => p.role === "laptop" && p.name === name)) throw new HttpError(403, "Only your laptop's Kuvend can change the setup here.");
+};
 route("GET", "/api/sync", async () => ({ home: os.homedir(), report: sync.lastReport(), pushed: syncpush.pushStatus() }));
 route("POST", "/api/sync/plan", async (req) => {
+  fromLaptop(req);
   const b = await body(req, SYNC_MAX);
   if (!Array.isArray(b.manifest)) throw new HttpError(400, "No manifest");
   return { need: sync.plan(os.homedir(), b.manifest as sync.ManifestEntry[]) };
 });
 route("POST", "/api/sync/apply", async (req) => {
+  fromLaptop(req);
   try {
     sync.apply(os.homedir(), (await body(req, SYNC_MAX)) as unknown as sync.ApplyInput);
   } catch (e) {

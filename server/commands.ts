@@ -94,12 +94,12 @@ function claudeCommands(home: string): Command[] {
   } catch {
     /* none */
   }
-  const off = new Set(Object.entries(settings.skillOverrides ?? {}).filter(([, v]) => v === "off").map(([k]) => k));
+  const off = new Set(Object.entries(settings?.skillOverrides ?? {}).filter(([, v]) => v === "off").map(([k]) => k));
   const plugins: Command[] = [];
   try {
-    const installed = JSON.parse(read(path.join(home, ".claude", "plugins", "installed_plugins.json")) || "{}").plugins ?? {};
+    const installed = JSON.parse(read(path.join(home, ".claude", "plugins", "installed_plugins.json")) || "{}")?.plugins ?? {};
     for (const [id, entries] of Object.entries<any>(installed)) {
-      if (settings.enabledPlugins?.[id] === false) continue;
+      if (settings?.enabledPlugins?.[id] === false) continue;
       const at = Array.isArray(entries) ? entries.at(-1)?.installPath : null;
       if (typeof at === "string") plugins.push(...skills(path.join(at, "skills"), `${id.split("@")[0]}:`), ...commands(path.join(at, "commands"), `${id.split("@")[0]}:`));
     }
@@ -125,5 +125,5 @@ export function listCommands(agent: AgentId, home = os.homedir()): Command[] {
   // Built-ins Claude Code reported on its last run (from its start-up event), after the described ones.
   const reported: Command[] = agent === "claude" ? claudeSlash.map((name) => ({ name, description: "", kind: "builtin" as const })) : [];
   const seen = new Set<string>();
-  return [...BUILTIN[agent], ...own, ...reported].filter((c) => !seen.has(c.name) && seen.add(c.name)).sort((a, z) => (a.kind === "builtin" ? -1 : z.kind === "builtin" ? 1 : a.name.localeCompare(z.name)));
+  return [...BUILTIN[agent], ...own, ...reported].filter((c) => !seen.has(c.name) && seen.add(c.name)).sort((a, z) => Number(z.kind === "builtin") - Number(a.kind === "builtin") || a.name.localeCompare(z.name));
 }
