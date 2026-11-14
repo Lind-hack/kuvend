@@ -31,7 +31,7 @@ export async function pushConfig(peer: Peer): Promise<PushStatus> {
     const remote = await peerCall<{ home: string }>(peer, "/api/sync");
     if (!remote?.home) throw new Error("That Kuvend is too old to receive your setup. Update it there.");
     const b = collect(os.homedir(), remote.home);
-    const list = await manifest(b);
+    let list = await manifest(b);
     const { need } = await peerCall<{ need: string[] }>(peer, "/api/sync/plan", { body: { manifest: list } });
     let batch: { path: string; data: string; secret: boolean }[] = [];
     let size = 0;
@@ -43,7 +43,13 @@ export async function pushConfig(peer: Peer): Promise<PushStatus> {
       size = 0;
     };
     for (const p of need) {
-      const data = read(b, p);
+      let data: Buffer;
+      try {
+        data = read(b, p);
+      } catch {
+        list = list.filter((e) => e.path !== p); // gone since it was listed: the next sync sends it
+        continue;
+      }
       if (batch.length && size + data.length > CHUNK) await flush(false);
       batch.push({ path: p, data: data.toString("base64"), secret: b.files.get(p)!.secret });
       size += data.length;

@@ -183,6 +183,29 @@ test("review fixes: PowerShell/cmd as a TOML value is Windows-only, and one unre
   assert.match(why, /installed_plugins\.json/);
 });
 
+test("files Codex manages itself stay, and a file that vanishes mid-sync is left out, not fatal", async () => {
+  const src = fs.mkdtempSync(path.join(os.tmpdir(), "kuvend-src-"));
+  put(src, ".codex/skills/.system/openai-docs/SKILL.md", "codex's own");
+  put(src, ".codex/skills/mine/SKILL.md", "---\nname: mine\n---\n");
+  put(src, ".codex/skills/mine/gone.md", "about to vanish");
+  const b = sync.collect(src, "/home/kuvend");
+  assert.ok(![...b.files.keys()].some((p) => p.includes(".system")), "Codex's built-in skills are its own business");
+  fs.rmSync(path.join(src, ".codex/skills/mine/gone.md"));
+  const list = await sync.manifest(b);
+  assert.ok(!list.some((e) => e.path.endsWith("gone.md")), "a vanished file drops out of the manifest");
+  assert.ok(list.some((e) => e.path.endsWith("mine/SKILL.md")));
+});
+
+test("the home folder's CLAUDE.md (rules for every project under it) goes too, marked as the server's copy", () => {
+  const src = fs.mkdtempSync(path.join(os.tmpdir(), "kuvend-src-"));
+  put(src, "CLAUDE.md", `# Rules\n- Machine: Windows 11.\n- Projects live in ${src}\\Desktop\\claude.`);
+  const b = sync.collect(src, "/home/kuvend");
+  const text = sync.read(b, "CLAUDE.md").toString();
+  assert.match(text, /^> Copied from your laptop by Kuvend\. This copy is on the server/);
+  assert.match(text, /Projects live in \/home\/kuvend\/Desktop\/claude\./, "paths point at the server's home");
+  assert.ok(sync.allowed("CLAUDE.md") && sync.allowed("AGENTS.md"));
+});
+
 test("apply refuses paths outside the synced folders", () => {
   const dest = fs.mkdtempSync(path.join(os.tmpdir(), "kuvend-dest-"));
   const bad = (p: string) => assert.throws(() => sync.apply(dest, { files: [{ path: p, data: "eA==", secret: false }], manifest: [{ path: p, sha: "x", size: 1 }], report: null }), /not a synced/, p);

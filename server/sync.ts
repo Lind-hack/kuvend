@@ -41,11 +41,13 @@ const FILES = [
   ".claude/CLAUDE.md", ".claude/settings.json", MCP, ".claude/plugins/installed_plugins.json", ".claude/plugins/known_marketplaces.json", ".claude/plugins/blocklist.json",
   ".codex/AGENTS.md", ".codex/config.toml", ".codex/hooks.json",
   ".config/opencode/opencode.json", ".config/opencode/opencode.jsonc", ".config/opencode/AGENTS.md",
+  "CLAUDE.md", "AGENTS.md", // the home folder's own: rules for every project under it
 ];
 const SECRET = new Set([".claude/settings.json", MCP, ".codex/config.toml", ".config/opencode/opencode.json", ".config/opencode/opencode.jsonc"]);
 const NEVER = new Set([".credentials.json", "auth.json"]);
 const ENV_DIRS = new Set(["node_modules", ".venv", "venv", "ms-playwright"]);
-const SKIP_DIRS = new Set([".git", "__pycache__", ".cache", ".pytest_cache", ".mypy_cache"]);
+// `.system`: the skills Codex ships and rewrites itself; the server's Codex installs its own.
+const SKIP_DIRS = new Set([".git", "__pycache__", ".cache", ".pytest_cache", ".mypy_cache", ".system"]);
 const SKIP_EXT = /\.(exe|dll|pyd|node|lnk|msi)$/i;
 const MAX_FILE = 25 * 1024 * 1024;
 
@@ -224,6 +226,11 @@ export function collect(src: string, dest: string): Bundle {
     if (typeof j === "object") use(j);
   };
   for (const rel of [".claude/CLAUDE.md", ".codex/AGENTS.md", ".config/opencode/AGENTS.md", ".claude/plugins/blocklist.json"]) if (exists(rel)) put(rel, fs.readFileSync(path.join(src, rel)));
+  // The home folder's rules apply to every project under it, on the server too. They often describe the
+  // laptop itself (its OS, its shell), so the copy says where it now is.
+  for (const rel of ["CLAUDE.md", "AGENTS.md"])
+    if (exists(rel))
+      put(rel, `> Copied from your laptop by Kuvend. This copy is on the server (home ${dest}): notes below about the laptop's machine don't apply here.\n\n${map(text(rel))}`);
 
   json(".claude/settings.json", (s) => {
     if (s.hooks) {
@@ -309,7 +316,12 @@ export async function manifest(b: Bundle): Promise<ManifestEntry[]> {
       const c = shaCache.get(f.abs!);
       if (c && c.size === f.size && c.mtimeMs === f.mtimeMs) sha = c.sha;
       else {
-        sha = sha256(fs.readFileSync(f.abs!));
+        try {
+          sha = sha256(fs.readFileSync(f.abs!));
+        } catch {
+          b.files.delete(p); // gone since it was listed (an agent rewriting its own files): next sync has it
+          continue;
+        }
         shaCache.set(f.abs!, { size: f.size, mtimeMs: f.mtimeMs, sha });
         if (++n % 200 === 0) await new Promise((r) => setImmediate(r));
       }
