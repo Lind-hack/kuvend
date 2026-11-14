@@ -1,6 +1,7 @@
 import { ArrowUp, GitBranch, LoaderCircle, Menu, MoreHorizontal, Save, Server, Smartphone, Square, SquareTerminal, Trash2, X } from "lucide-react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { AGENT_NAME, api, onPhone, type AgentId, type AppState, type FileChange, type Mode, type Peer } from "./api";
+import { AGENTS, AGENT_NAME, AGENT_SHORT, api, onPhone, type AgentId, type AppState, type FileChange, type Mode, type Peer } from "./api";
+import { ContextWatch } from "./ContextWatch";
 import { Monitor, type Tab } from "./Monitor";
 import { SendToServer } from "./Phone";
 import type { Sheet as SheetName } from "./Sidebar";
@@ -94,8 +95,8 @@ export function Workspace({ id, remote, state, onHome, refreshState, onNav, onRu
     }
   }, [running, refreshState]);
 
-  const installed = useMemo(() => (["claude", "codex"] as AgentId[]).filter((a) => state?.agents[a]?.installed), [state]);
-  const canReview = installed.length === 2;
+  const installed = useMemo(() => AGENTS.filter((a) => state?.agents[a]?.installed), [state]);
+  const canReview = installed.includes("claude") && installed.includes("codex");
 
   async function act(tag: string, fn: () => Promise<unknown>) {
     setBusy(tag);
@@ -170,6 +171,7 @@ export function Workspace({ id, remote, state, onHome, refreshState, onNav, onRu
             {session.mirrorOf?.takenAt && <span className="shrink-0">taken over from {session.mirrorOf.name}</span>}
           </p>
         </div>
+        <ContextWatch turns={turns} agent={session.agent} running={running} onCompact={session.agent === "claude" && !copy && !away ? () => send("/compact") : undefined} />
         <Button
           size="sm"
           tone="plain"
@@ -362,10 +364,10 @@ export function Workspace({ id, remote, state, onHome, refreshState, onNav, onRu
               />
               <div className="flex items-center gap-2 px-2.5 pb-2.5">
                 <div role="radiogroup" aria-label="Agent" className="inline-flex rounded-full bg-black/25 p-[3px] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.07)]">
-                  {(["claude", "codex"] as AgentId[]).map((a) => (
+                  {AGENTS.map((a) => (
                     <button key={a} type="button" role="radio" aria-checked={agent === a} aria-label={AGENT_NAME[a]} disabled={!!state && !installed.includes(a)} onClick={() => setAgent(a)} className={cx("flex min-h-8 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] font-medium transition-colors disabled:opacity-35", agent === a ? "bg-white/[0.12] text-silk" : "text-silk-3 hover:text-silk")}>
                       <AgentDot agent={a} />
-                      <span className="max-sm:hidden">{a === "claude" ? "Claude" : "Codex"}</span>
+                      <span className="max-sm:hidden">{AGENT_SHORT[a]}</span>
                     </button>
                   ))}
                 </div>

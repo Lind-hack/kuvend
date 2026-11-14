@@ -3,7 +3,7 @@ import path from "node:path";
 import { runTurn, type AgentEvent, type TurnHandle } from "./agents.js";
 import { briefing } from "./chats.js";
 import * as git from "./git.js";
-import { home, newId, readSession, readSettings, rememberProject, saveSession, type AgentId, type Item, type Mode, type Session, type Turn } from "./store.js";
+import { AGENT_NAME, home, newId, readSession, readSettings, rememberProject, saveSession, type AgentId, type Item, type Mode, type Session, type Turn } from "./store.js";
 
 // A session is one conversation with your agents about one project. Each turn is bracketed by two
 // checkpoints, so its changes can be listed, diffed and undone. Live turns stream to every open tab.
@@ -77,6 +77,13 @@ function need(id: string): Session {
 function apply(s: Session, turn: Turn, l: Live, e: AgentEvent, agent: AgentId, ownSession: boolean) {
   if (e.t === "session") {
     if (ownSession) s.agentSessions[agent] = e.id;
+    return;
+  }
+  if (e.t === "usage") {
+    // A later reading of the same turn (Codex's session file) refines the earlier one; a null keeps what was known.
+    const prev = turn.usage;
+    turn.usage = { ...e.usage, context: e.usage.context ?? prev?.context ?? null, window: e.usage.window ?? prev?.window ?? null, ttlSec: e.usage.ttlSec ?? prev?.ttlSec ?? null };
+    broadcast(s.id, { type: "turn", turn });
     return;
   }
   if (e.t === "delta") {
@@ -182,7 +189,7 @@ export async function review(id: string, turnId: string) {
     throw new Error("That turn didn't change any files.");
   }
   const reviewer: AgentId = t.agent === "claude" ? "codex" : "claude";
-  const prompt = `Another AI coding agent (${t.agent === "claude" ? "Claude Code" : "Codex"}) just made the change below in this project, for this request:
+  const prompt = `Another AI coding agent (${AGENT_NAME[t.agent]}) just made the change below in this project, for this request:
 
 <request>
 ${t.prompt.slice(0, 4000)}

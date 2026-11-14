@@ -132,6 +132,7 @@ const codexIdOf = (file: string) => path.basename(file).match(/([0-9a-f]{8}-[0-9
 export function chatFile(agent: AgentId, id: string): string | null {
   if (!ID.test(id)) return null;
   if (agent === "claude") return claudeFiles().find((f) => path.basename(f) === `${id}.jsonl`) ?? null;
+  if (agent !== "codex") return null; // OpenCode keeps its chats in its own database, not a file to copy
   return codexFiles().find((f) => codexIdOf(f)?.toLowerCase() === id.toLowerCase()) ?? null;
 }
 

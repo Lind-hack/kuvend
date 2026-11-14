@@ -1,7 +1,10 @@
 // The browser side of Kuvend's local API. The token arrives once in the URL fragment (#token=…), is kept
 // in this browser, and goes on every request; it never appears in server logs or referrers.
 
-export type AgentId = "claude" | "codex";
+export type AgentId = "claude" | "codex" | "opencode";
+export const AGENTS: AgentId[] = ["claude", "codex", "opencode"];
+// How full the agent's context is after a turn, and its prompt cache (see server/store.ts).
+export type Usage = { context: number | null; window: number | null; cacheRead: number; cacheWrite: number; fresh: number; output: number; ttlSec: number | null };
 export type Mode = "plan" | "edit" | "full";
 
 export type Item =
@@ -27,6 +30,7 @@ export type Turn = {
   items: Item[];
   files?: FileChange[];
   costUsd?: number;
+  usage?: Usage;
   council?: Council;
 };
 
@@ -170,7 +174,8 @@ export function events(sessionId: string, onMessage: (m: LiveMessage) => void): 
   return () => es.close();
 }
 
-export const AGENT_NAME: Record<AgentId, string> = { claude: "Claude Code", codex: "Codex" };
+export const AGENT_NAME: Record<AgentId, string> = { claude: "Claude Code", codex: "Codex", opencode: "OpenCode" };
+export const AGENT_SHORT: Record<AgentId, string> = { claude: "Claude", codex: "Codex", opencode: "OpenCode" };
 export const MODE_INFO: Record<Mode, { label: string; hint: string }> = {
   plan: { label: "Plan", hint: "Looks and plans. Changes nothing." },
   edit: { label: "Edit", hint: "Changes files. Asks before running commands." },

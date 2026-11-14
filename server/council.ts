@@ -1,5 +1,5 @@
 import * as git from "./git.js";
-import { readSession, readSettings, saveSession, saveSettings, type Council, type Turn } from "./store.js";
+import { AGENT_NAME, readSession, readSettings, saveSession, saveSettings, type Council, type Turn } from "./store.js";
 
 // The council: an optional link to Agentic OS. A take can be put before that account's Roast room
 // (several AIs debate, a judge rules); the verdict comes back here and can become the next message.
@@ -74,7 +74,7 @@ export async function ask(sessionId: string, turnId: string): Promise<Turn> {
   if (t.council && !["done", "cancelled", "refused", "failed"].includes(t.council.status)) throw new CouncilError("The council is already on this take");
   const said = [...t.items].reverse().find((i) => i.kind === "text");
   const diff = t.before && t.after ? await git.fullDiff(s.cwd, t.before, t.after, 24_000) : "";
-  const task = `A coding agent (${t.agent === "claude" ? "Claude Code" : "Codex"}) made a change for this request:
+  const task = `A coding agent (${AGENT_NAME[t.agent]}) made a change for this request:
 
 "${t.prompt.slice(0, 2000)}"
 

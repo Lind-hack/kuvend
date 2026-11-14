@@ -4,7 +4,7 @@ import { AGENT_NAME, MODE_INFO, type AgentId, type Mode } from "./api";
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
-export const CAP: Record<AgentId, string> = { claude: "var(--color-claude)", codex: "var(--color-codex)" };
+export const CAP: Record<AgentId, string> = { claude: "var(--color-claude)", codex: "var(--color-codex)", opencode: "var(--color-opencode)" };
 
 // An LED: off, lit, or blinking while something records.
 export function Led({ color = "var(--color-go)", on = true, blink = false, label }: { color?: string; on?: boolean; blink?: boolean; label?: string }) {

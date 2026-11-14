@@ -16,7 +16,7 @@ import * as council from "./council.js";
 import * as remote from "./remote.js";
 import { checkDiff } from "./safety.js";
 import * as sessions from "./sessions.js";
-import { accessToken, deleteSession, listSessions, readPeers, readSession, readSettings, recentProjects, saveSettings, writePeers, type AgentId, type Mode } from "./store.js";
+import { AGENTS, accessToken, deleteSession, listSessions, readPeers, readSession, readSettings, recentProjects, saveSettings, writePeers, type AgentId, type Mode } from "./store.js";
 
 // Kuvend's local server. It listens on 127.0.0.1, and every request must carry the install's token and
 // come from Kuvend's own page: a website you visit can't reach your agents through it. When phone access
@@ -27,7 +27,6 @@ import { accessToken, deleteSession, listSessions, readPeers, readSession, readS
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.basename(HERE) === "server" && path.basename(path.dirname(HERE)) === "dist" ? path.resolve(HERE, "../web") : path.resolve(HERE, "../dist/web");
 const SHA = /^[0-9a-f]{40}$/;
-const AGENTS: AgentId[] = ["claude", "codex"];
 const MODES: Mode[] = ["plan", "edit", "full"];
 
 class HttpError extends Error {

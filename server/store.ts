@@ -10,8 +10,15 @@ import path from "node:path";
 export const home = () => process.env.KUVEND_HOME ?? path.join(os.homedir(), ".kuvend");
 const sessionsDir = () => path.join(home(), "sessions");
 
-export type AgentId = "claude" | "codex";
+export type AgentId = "claude" | "codex" | "opencode";
+export const AGENTS: AgentId[] = ["claude", "codex", "opencode"];
+export const AGENT_NAME: Record<AgentId, string> = { claude: "Claude Code", codex: "Codex", opencode: "OpenCode" };
 export type Mode = "plan" | "edit" | "full";
+
+// How full the agent's context is after a turn, and its prompt cache. Numbers are the CLI's own; null = it
+// didn't say (never guessed). `context` is the last model call's prompt size; `ttlSec` how long the cache
+// it just wrote stays warm.
+export type Usage = { context: number | null; window: number | null; cacheRead: number; cacheWrite: number; fresh: number; output: number; ttlSec: number | null };
 
 export type Item =
   | { kind: "text"; text: string }
@@ -36,6 +43,7 @@ export type Turn = {
   items: Item[];
   files?: FileChange[];
   costUsd?: number;
+  usage?: Usage;
   council?: Council; // the take was put before an Agentic OS Roast room
 };
 

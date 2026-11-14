@@ -1,12 +1,13 @@
 import { ArrowUp, Check, ChevronDown, Copy, FolderOpen, GitBranch, LoaderCircle, Menu, Settings2, ShieldCheck, SquareTerminal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AGENT_NAME, api, onPhone, type AgentId, type AppState, type Chat, type Mode, type Project, type Session } from "./api";
+import { AGENTS, AGENT_NAME, AGENT_SHORT, api, onPhone, type AgentId, type AppState, type Chat, type Mode, type Project, type Session } from "./api";
 import { openChat, useChats, type Sheet as SheetName } from "./Sidebar";
 import { AgentDot, ago, Button, cx, Led, ModeSwitch, Sheet, shortPath } from "./ui";
 
 const INSTALL: Record<AgentId, { cmd: string; login: string }> = {
   claude: { cmd: "npm install -g @anthropic-ai/claude-code", login: "claude" },
   codex: { cmd: "npm install -g @openai/codex", login: "codex login" },
+  opencode: { cmd: "npm install -g @opencode/cli", login: "opencode auth login" },
 };
 
 export function CopyLine({ text }: { text: string }) {
@@ -118,7 +119,7 @@ type Recent = { key: string; title: string; where: string; at: string; agent: Ag
 
 export function Launch({ state, onOpen, initialProject, onNav, onSheet }: { state: AppState | null; onOpen: (id: string) => void; initialProject?: string; onNav: () => void; onSheet: (s: SheetName) => void }) {
   const [project, setProject] = useState<Project | null>(null);
-  const firstReady = (["claude", "codex"] as AgentId[]).find((a) => state?.agents?.[a]?.installed) ?? "claude";
+  const firstReady = AGENTS.find((a) => state?.agents?.[a]?.installed) ?? "claude";
   const [agent, setAgent] = useState<AgentId | null>(null);
   const [mode, setMode] = useState<Mode>("edit");
   const [safeCopy, setSafeCopy] = useState(false);
@@ -162,7 +163,7 @@ export function Launch({ state, onOpen, initialProject, onNav, onSheet }: { stat
     }
     setBusy("");
   }
-  const missing = state ? (["claude", "codex"] as AgentId[]).filter((a) => !state.agents[a]?.installed) : [];
+  const missing = state ? AGENTS.filter((a) => !state.agents[a]?.installed) : [];
 
   return (
     <div className="h-dvh overflow-y-auto">
@@ -202,10 +203,10 @@ export function Launch({ state, onOpen, initialProject, onNav, onSheet }: { stat
           <div className="flex flex-wrap items-center gap-2 px-3 pt-1 pb-3">
             <ProjectPicker projects={state?.projects ?? []} value={project} onPick={setProject} onError={setError} />
             <div role="radiogroup" aria-label="Agent" className="inline-flex rounded-full bg-black/25 p-[3px] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.07)]">
-              {(["claude", "codex"] as AgentId[]).map((a) => (
+              {AGENTS.map((a) => (
                 <button key={a} type="button" role="radio" aria-checked={who === a} disabled={!!state && !state.agents[a]?.installed} onClick={() => setAgent(a)} className={cx("flex min-h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors disabled:opacity-35", who === a ? "bg-white/[0.12] text-silk" : "text-silk-3 hover:text-silk")}>
                   <AgentDot agent={a} />
-                  {a === "claude" ? "Claude" : "Codex"}
+                  {AGENT_SHORT[a]}
                 </button>
               ))}
             </div>
