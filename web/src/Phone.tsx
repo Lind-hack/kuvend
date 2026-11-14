@@ -284,6 +284,7 @@ export function ServerPanel({ onClose }: { onClose: () => void; onOpen?: (id: st
           ))}
         </ul>
       )}
+      {peers && <SetupSync servers={peers.filter((p) => (p.role ?? "server") === "server")} />}
       <form
         className="mt-5 flex flex-col gap-2.5 border-t border-rule pt-5"
         onSubmit={(e) => {
@@ -316,6 +317,77 @@ export function ServerPanel({ onClose }: { onClose: () => void; onOpen?: (id: st
       </form>
       {error && <p className="mt-3 text-[13px] text-clip">{error}</p>}
     </Sheet>
+  );
+}
+
+type SyncReport = { at: string; files: number; counts: Record<"claudeSkills" | "codexSkills" | "opencodeSkills" | "sharedSkills" | "plugins" | "mcp" | "hooks", number>; skipped: { what: string; why: string }[]; envDirs: string[] };
+type PushStatus = { at: string; ok: boolean; sent?: number; error?: string; report?: SyncReport };
+
+// Your skills, MCP servers, hooks and CLAUDE.md on the server: when they were last copied, and what
+// stayed behind. On the server itself, the same report from the laptop's side.
+function SetupSync({ servers }: { servers: Peer[] }) {
+  const [info, setInfo] = useState<{ report: SyncReport | null; pushed: Record<string, PushStatus> } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [open, setOpen] = useState(false);
+  const load = useCallback(() => void api<{ report: SyncReport | null; pushed: Record<string, PushStatus> }>("/api/sync").then(setInfo).catch(() => {}), []);
+  useEffect(load, [load]);
+  if (!info) return null;
+  const rows: { name: string; st: PushStatus | null }[] = servers.length ? servers.map((p) => ({ name: p.name, st: info.pushed?.[p.id] ?? null })) : info.report ? [{ name: "", st: { at: info.report.at, ok: true, report: info.report } }] : [];
+  if (!rows.length) return null;
+  const sum = (r: SyncReport) => {
+    const c = r.counts;
+    return `${c.claudeSkills + c.codexSkills + c.opencodeSkills + c.sharedSkills} skills · ${c.plugins} plugins · ${c.mcp} MCP · ${c.hooks} hooks`;
+  };
+  async function now() {
+    setBusy(true);
+    setError("");
+    try {
+      await api("/api/sync/push", { body: {} });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+    setBusy(false);
+    load();
+  }
+  const left = rows.flatMap((r) => r.st?.report?.skipped ?? []);
+  const env = [...new Set(rows.flatMap((r) => r.st?.report?.envDirs ?? []))];
+  return (
+    <section className="mt-5 flex flex-col gap-2 border-t border-rule pt-5">
+      <h3 className="text-[15px] font-medium">{servers.length ? "Your setup on the server" : "Setup from your laptop"}</h3>
+      <p className="text-[13px] leading-relaxed text-silk-3">Skills, agents, commands, CLAUDE.md and AGENTS.md, settings and hooks, MCP servers with their keys, plugins and OpenCode's config. Copied after you change them, and hourly. Logins and chat history never leave this computer.</p>
+      {rows.map(({ name, st }) => (
+        <p key={name || "here"} className="text-[13.5px]">
+          {name && <span className="font-medium">{name}: </span>}
+          {!st ? <span className="text-silk-3">not copied yet</span> : st.ok && st.report ? <span className="text-silk-2">{ago(st.at)} · {sum(st.report)}</span> : <span className="text-clip">{st.error}</span>}
+        </p>
+      ))}
+      {(left.length > 0 || env.length > 0) && (
+        <button type="button" className="self-start text-[13px] text-silk-3 underline underline-offset-4 hover:text-silk" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+          {left.length} left out, {env.length} to rebuild there
+        </button>
+      )}
+      {open && (
+        <div className="flex flex-col gap-2 rounded-[12px] bg-black/25 p-3 text-[12.5px] text-silk-2">
+          {left.length > 0 && (
+            <ul className="list-disc space-y-0.5 pl-4">
+              {left.map((s, i) => (
+                <li key={i}>
+                  <span className="font-mono">{s.what}</span>: {s.why}
+                </li>
+              ))}
+            </ul>
+          )}
+          {env.length > 0 && <p>Their packages stay on this computer; install them on the server once: {env.map((d) => <code key={d} className="mr-1 font-mono">{d}</code>)}</p>}
+        </div>
+      )}
+      {servers.length > 0 && (
+        <Button size="sm" className="self-start" disabled={busy} onClick={() => void now()} icon={busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : undefined}>
+          {busy ? "Copying…" : "Copy now"}
+        </Button>
+      )}
+      {error && <p className="text-[13px] text-clip">{error}</p>}
+    </section>
   );
 }
 

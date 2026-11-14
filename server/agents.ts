@@ -83,6 +83,13 @@ function opencodeArgs(o: TurnOptions) {
 
 // The command for one turn. Every prompt goes on stdin, so long prompts never hit a command-line limit.
 export function agentArgs(o: TurnOptions): { cmd: string; args: string[]; stdin: string } {
+  // Codex's /review is its own reviewer (`codex exec review`): the uncommitted changes, or what the flags say.
+  const review = o.agent === "codex" ? o.prompt.trim().match(/^\/review(?:\s+([\s\S]*))?$/) : null;
+  if (review) {
+    const rest = (review[1] ?? "").trim();
+    const target = rest.startsWith("--") ? rest.split(/\s+/) : ["--uncommitted", ...(rest ? [rest] : [])];
+    return { cmd: "codex", args: ["exec", "--json", "--skip-git-repo-check", ...CODEX_MODE[o.mode], ...(o.model ? ["-m", o.model] : []), "review", ...target], stdin: "" };
+  }
   const args = o.agent === "claude" ? claudeArgs(o) : o.agent === "codex" ? codexArgs(o) : opencodeArgs(o);
   return { cmd: o.agent, args, stdin: o.prompt };
 }
@@ -127,6 +134,9 @@ export function explain(raw: string): string {
 
 type Parser = { line: (e: any) => void; result: () => { ok: boolean; costUsd?: number; error?: string } | null };
 
+// Every slash command Claude Code said it accepts on its last start (built-ins like /goal included).
+export let claudeSlash: string[] = [];
+
 export function claudeParser(emit: (e: AgentEvent) => void): Parser {
   let final: { ok: boolean; costUsd?: number; error?: string } | null = null;
   let compacted: number | null = null;
@@ -134,6 +144,7 @@ export function claudeParser(emit: (e: AgentEvent) => void): Parser {
     result: () => final,
     line: (e) => {
       if (e?.session_id && e.type === "system" && e.subtype === "init") emit({ t: "session", id: e.session_id });
+      if (e?.type === "system" && e.subtype === "init" && Array.isArray(e.slash_commands)) claudeSlash = e.slash_commands.filter((c: unknown): c is string => typeof c === "string");
       if (e?.type === "system" && e.subtype === "compact_boundary" && typeof e.compact_metadata?.post_tokens === "number") compacted = e.compact_metadata.post_tokens;
       if (e?.type === "stream_event" && e.event?.type === "content_block_delta" && e.event.delta?.type === "text_delta") emit({ t: "delta", text: e.event.delta.text ?? "" });
       if (e?.type === "assistant") {

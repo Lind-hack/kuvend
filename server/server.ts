@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import os from "node:os";
 import { detectAgents, modelSuggestions } from "./agents.js";
 import * as chats from "./chats.js";
+import { listCommands } from "./commands.js";
 import * as handoff from "./handoff.js";
 import * as mirror from "./mirror.js";
 import { autostartOn, setAutostart } from "./autostart.js";
@@ -15,6 +16,8 @@ import { detectCommand, errorContext, onRunState, runState, startApp, stopApp } 
 import * as council from "./council.js";
 import * as remote from "./remote.js";
 import { checkDiff } from "./safety.js";
+import * as sync from "./sync.js";
+import * as syncpush from "./syncpush.js";
 import * as sessions from "./sessions.js";
 import { AGENTS, accessToken, deleteSession, listSessions, readPeers, readSession, readSettings, recentProjects, saveSettings, writePeers, type AgentId, type Mode } from "./store.js";
 
@@ -244,6 +247,32 @@ route("POST", "/api/autostart", async (req) => {
     throw bad(e);
   }
   return { on: autostartOn() };
+});
+
+// The / menu: each agent's own skills and commands on this computer (the CLI runs them itself).
+route("GET", "/api/commands", async (_r, _m, url) => ({ commands: listCommands(agentOf(url.searchParams.get("agent")) ?? "claude") }));
+
+// Your setup (skills, MCP, hooks, CLAUDE.md…), the same on the server. The laptop asks for this machine's
+// home, sends a manifest, then only the files that changed (sync.ts). `push` is the laptop's own button.
+const SYNC_MAX = 32 * 1024 * 1024;
+route("GET", "/api/sync", async () => ({ home: os.homedir(), report: sync.lastReport(), pushed: syncpush.pushStatus() }));
+route("POST", "/api/sync/plan", async (req) => {
+  const b = await body(req, SYNC_MAX);
+  if (!Array.isArray(b.manifest)) throw new HttpError(400, "No manifest");
+  return { need: sync.plan(os.homedir(), b.manifest as sync.ManifestEntry[]) };
+});
+route("POST", "/api/sync/apply", async (req) => {
+  try {
+    sync.apply(os.homedir(), (await body(req, SYNC_MAX)) as unknown as sync.ApplyInput);
+  } catch (e) {
+    throw e instanceof HttpError ? e : bad(e);
+  }
+  return { ok: true };
+});
+route("POST", "/api/sync/push", async (req) => {
+  laptopOnly(req);
+  if (!readPeers().some((p) => (p.role ?? "server") === "server")) throw new HttpError(409, "Connect a server first");
+  return { pushed: await syncpush.pushAll() };
 });
 
 // What the other computer calls: take a session, give one back, and note that it went home.

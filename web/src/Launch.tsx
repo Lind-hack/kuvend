@@ -2,6 +2,7 @@ import { ArrowUp, Check, ChevronDown, Copy, FolderOpen, GitBranch, LoaderCircle,
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AGENTS, AGENT_NAME, AGENT_SHORT, api, onPhone, type AgentId, type AppState, type Chat, type Mode, type Project, type Session } from "./api";
 import { openChat, useChats, type Sheet as SheetName } from "./Sidebar";
+import { useSlash } from "./SlashMenu";
 import { AgentDot, ago, Button, cx, Led, ModeSwitch, Sheet, shortPath } from "./ui";
 
 const INSTALL: Record<AgentId, { cmd: string; login: string }> = {
@@ -128,6 +129,7 @@ export function Launch({ state, onOpen, initialProject, onNav, onSheet }: { stat
   const [error, setError] = useState("");
   const { chats } = useChats();
   const who = agent ?? firstReady;
+  const slash = useSlash(who, prompt, setPrompt);
 
   useEffect(() => {
     if (initialProject) void api<Project>("/api/project/inspect", { body: { path: initialProject } }).then(setProject).catch(() => {});
@@ -177,12 +179,13 @@ export function Launch({ state, onOpen, initialProject, onNav, onSheet }: { stat
         </header>
 
         <form
-          className="rise glass flex flex-col rounded-[26px] [animation-delay:80ms]"
+          className="rise glass relative flex flex-col rounded-[26px] [animation-delay:80ms]"
           onSubmit={(e) => {
             e.preventDefault();
             void start();
           }}
         >
+          {slash.menu}
           <label htmlFor="first" className="sr-only">
             What you want {AGENT_NAME[who]} to do
           </label>
@@ -191,6 +194,7 @@ export function Launch({ state, onOpen, initialProject, onNav, onSheet }: { stat
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => {
+              if (slash.onKey(e)) return;
               if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && prompt.trim()) {
                 e.preventDefault();
                 void start();

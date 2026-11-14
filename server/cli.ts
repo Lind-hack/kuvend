@@ -4,6 +4,7 @@ import path from "node:path";
 import { autostartOn, setAutostart } from "./autostart.js";
 import { listChats } from "./chats.js";
 import { startMirroring } from "./mirror.js";
+import { startConfigSync } from "./syncpush.js";
 import { keptRoute, startRemote, stopRemote } from "./remote.js";
 import { stopAll } from "./runapp.js";
 import { createServer, requestHandler } from "./server.js";
@@ -13,9 +14,10 @@ import { accessToken, readRunning, writeRunning } from "./store.js";
 // kuvend serve               run it on a server that stays on: no browser, remote access always on
 // kuvend code                show a code to pair a phone or a laptop with the Kuvend running here
 // kuvend handoff [--to name] open the terminal chat you're in inside Kuvend (and your phone), or send it on
+// kuvend sync                copy your setup (skills, MCP, hooks, CLAUDE.md…) to your connected server now
 
 const argv = process.argv.slice(2);
-const sub = ["serve", "code", "handoff", "autostart"].includes(argv[0]) ? argv[0] : null;
+const sub = ["serve", "code", "handoff", "autostart", "sync"].includes(argv[0]) ? argv[0] : null;
 const args = sub ? argv.slice(1) : argv;
 const flag = (name: string) => args.includes(name);
 const value = (name: string) => {
@@ -39,7 +41,12 @@ kuvend autostart on|off
 
 kuvend handoff [--agent claude|codex] [--to <computer>]
     Opens the newest Claude Code or Codex chat in this folder inside Kuvend, with its whole context.
-    --to sends it on to a connected computer (your server), to continue there with the laptop off.`);
+    --to sends it on to a connected computer (your server), to continue there with the laptop off.
+
+kuvend sync
+    Copies your Claude Code, Codex and OpenCode setup to your connected server now: skills, agents,
+    commands, CLAUDE.md / AGENTS.md, settings and hooks, MCP servers with their keys, and plugins.
+    Kuvend also does this on its own after you change them, and once an hour.`);
   process.exit(0);
 }
 
@@ -67,6 +74,22 @@ async function local<T>(p: string, body?: unknown): Promise<T> {
 async function code() {
   const c = await local<{ url: string; short: string; expiresAt: string }>("/api/remote/code", {});
   console.log(`\n  Pair a phone or laptop with this Kuvend\n\n  Address   ${c.url}\n  Code      ${c.short}\n\n  On a phone: open the address (Tailscale on, same account) and type the code.\n  On a laptop: Kuvend > Your server > Connect, then the address and the code.\n  The code works once, for 10 minutes.\n`);
+}
+
+async function syncCmd() {
+  console.log("\n  Copying your setup to your server…");
+  const { pushed } = await local<{ pushed: Record<string, { ok: boolean; sent?: number; error?: string; report?: { files: number; counts: Record<string, number>; skipped: { what: string; why: string }[]; envDirs: string[] } }> }>("/api/sync/push", {});
+  for (const [name, r] of Object.entries(pushed)) {
+    if (!r.ok) {
+      console.log(`\n  ${name}: didn't work. ${r.error}`);
+      continue;
+    }
+    const c = r.report!.counts;
+    console.log(`\n  ${name}: up to date (${r.sent} of ${r.report!.files} files sent).\n  ${c.claudeSkills} Claude skills, ${c.codexSkills} Codex skills, ${c.sharedSkills + c.opencodeSkills} other skills, ${c.plugins} plugins, ${c.mcp} MCP servers, ${c.hooks} hooks.`);
+    if (r.report!.skipped.length) console.log(`  Left out (Windows-only or too big): ${r.report!.skipped.length}. ${r.report!.skipped.slice(0, 4).map((x) => x.what).join("; ")}${r.report!.skipped.length > 4 ? "…" : ""}`);
+    if (r.report!.envDirs.length) console.log(`  Rebuild these on the server (their packages stay on this computer): ${r.report!.envDirs.join(", ")}`);
+  }
+  console.log("");
 }
 
 async function handoffCmd() {
@@ -103,8 +126,8 @@ if (sub === "autostart") {
       process.exit(1);
     }
   }
-} else if (sub === "code" || sub === "handoff") {
-  (sub === "code" ? code() : handoffCmd()).catch((e) => {
+} else if (sub === "code" || sub === "handoff" || sub === "sync") {
+  (sub === "code" ? code() : sub === "sync" ? syncCmd() : handoffCmd()).catch((e) => {
     console.error(`\n  ${e instanceof Error ? e.message : e}\n`);
     process.exit(1);
   });
@@ -156,7 +179,10 @@ if (sub === "autostart") {
         }
       }
       // A laptop keeps copies of its chats on its connected server, so the server can take over.
-      if (!serve) startMirroring(at, requestHandler());
+      if (!serve) {
+        startMirroring(at, requestHandler());
+        startConfigSync();
+      }
       if (serve) console.log(`\n  Kuvend is serving.\n\n${moved}${remoteLine}  Keep it running (a systemd service does that for you; see the README).\n`);
       else console.log(`\n  Kuvend is running.\n\n${moved}  ${url}\n\n${remoteLine}  Keep this window open. Ctrl+C stops it.\n`);
       if (!serve && !flag("--no-open")) open(url);

@@ -103,6 +103,47 @@ test("each agent gets its own command line", () => {
   assert.equal(agentArgs({ ...base, agent: "codex", mode: "edit" }).stdin, "fix it");
 });
 
+test("/review on Codex runs its own reviewer, on the uncommitted changes unless told otherwise", () => {
+  const base = { cwd: ".", onEvent: () => {}, agent: "codex" as const, mode: "edit" as const, model: "gpt-5.6-sol" };
+  assert.deepEqual(agentArgs({ ...base, prompt: "/review" }), { cmd: "codex", args: ["exec", "--json", "--skip-git-repo-check", "-s", "workspace-write", "-m", "gpt-5.6-sol", "review", "--uncommitted"], stdin: "" });
+  assert.deepEqual(agentArgs({ ...base, prompt: "/review focus on the auth code" }).args.slice(-2), ["--uncommitted", "focus on the auth code"]);
+  assert.deepEqual(agentArgs({ ...base, prompt: "/review --base main" }).args.slice(-3), ["review", "--base", "main"]);
+  assert.equal(agentArgs({ ...base, prompt: "/reviewer is a skill" }).args.includes("review"), false, "only the command itself");
+});
+
+test("the / menu lists each agent's own commands and skills, minus the ones switched off", async () => {
+  const { listCommands } = await import("./commands.js");
+  const h = fs.mkdtempSync(path.join(os.tmpdir(), "kuvend-cmds-"));
+  const put = (rel: string, data: string) => {
+    fs.mkdirSync(path.dirname(path.join(h, rel)), { recursive: true });
+    fs.writeFileSync(path.join(h, rel), data);
+  };
+  put(".claude/skills/tdd/SKILL.md", "---\nname: tdd\ndescription: Test-driven development. Red, green, refactor.\n---\nbody");
+  put(".claude/skills/ask-matt/SKILL.md", "---\nname: ask-matt\ndescription: >-\n  Ask Matt Pocock style\n  questions\n---\n");
+  put(".claude/skills/caveman-help/SKILL.md", "---\nname: caveman-help\ndescription: help\n---\n");
+  put(".claude/commands/goal.md", "---\ndescription: Set the goal for this chat\n---\nDo it");
+  put(".claude/commands/git/ship.md", "Ship it");
+  put(".claude/settings.json", JSON.stringify({ skillOverrides: { "caveman-help": "off" }, enabledPlugins: { "off@m": false } }));
+  put(".claude/plugins/installed_plugins.json", JSON.stringify({ plugins: { "figma@m": [{ installPath: path.join(h, "p/figma") }], "off@m": [{ installPath: path.join(h, "p/off") }] } }));
+  put("p/figma/skills/implement-design/SKILL.md", "---\nname: implement-design\ndescription: Figma to code\n---\n");
+  put("p/off/skills/nope/SKILL.md", "---\nname: nope\n---\n");
+  put(".codex/skills/tdd/SKILL.md", "---\nname: tdd\ndescription: TDD for Codex\n---\n");
+  put(".codex/prompts/explain.md", "Explain $1");
+  put(".agents/skills/impeccable/SKILL.md", "---\nname: impeccable\ndescription: Design polish\n---\n");
+  put(".config/opencode/command/deploy.md", "---\ndescription: Deploy it\n---\n");
+  put(".codex/skills/code-review/SKILL.md", "---\nname: code-review\ndescription: Review\n---\n");
+  fs.symlinkSync(path.join(h, ".codex/skills/code-review"), path.join(h, ".claude/skills/code-review"), process.platform === "win32" ? "junction" : "dir");
+
+  const claude = listCommands("claude", h);
+  const names = claude.map((c) => c.name);
+  for (const n of ["tdd", "ask-matt", "code-review", "goal", "git:ship", "figma:implement-design", "compact"]) assert.ok(names.includes(n), `claude has /${n}`);
+  for (const n of ["caveman-help", "off:nope", "nope"]) assert.ok(!names.includes(n), `claude hides /${n}`);
+  assert.equal(claude.find((c) => c.name === "tdd")?.description, "Test-driven development. Red, green, refactor.");
+  assert.equal(claude.find((c) => c.name === "ask-matt")?.description, "Ask Matt Pocock style questions", "folded YAML");
+  assert.deepEqual(listCommands("codex", h).map((c) => c.name).sort(), ["code-review", "impeccable", "prompts:explain", "review", "tdd"]);
+  assert.ok(listCommands("opencode", h).some((c) => c.name === "deploy"));
+});
+
 test("a CLI that isn't signed in says where to sign in", () => {
   assert.match(explain("Invalid API key · Please run /login"), /isn't signed in/);
   assert.match(explain("Not logged in"), /isn't signed in/);

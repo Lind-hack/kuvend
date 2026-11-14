@@ -2,6 +2,7 @@ import { ArrowUp, GitBranch, LoaderCircle, Menu, MoreHorizontal, Save, Server, S
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { AGENTS, AGENT_NAME, AGENT_SHORT, api, onPhone, type AgentId, type AppState, type FileChange, type Mode, type Peer } from "./api";
 import { ContextWatch } from "./ContextWatch";
+import { useSlash } from "./SlashMenu";
 import { Monitor, type Tab } from "./Monitor";
 import { SendToServer } from "./Phone";
 import type { Sheet as SheetName } from "./Sidebar";
@@ -25,6 +26,7 @@ export function Workspace({ id, remote, state, onHome, refreshState, onNav, onRu
   const { data, error, reload } = useSession(id);
   const [text, setText] = useState("");
   const [agent, setAgent] = useState<AgentId>("claude");
+  const slash = useSlash(agent, text, setText);
   const [mode, setMode] = useState<Mode>("edit");
   const [busy, setBusy] = useState("");
   const [actionError, setActionError] = useState("");
@@ -343,7 +345,8 @@ export function Workspace({ id, remote, state, onHome, refreshState, onNav, onRu
                 ))}
               </div>
             )}
-            <div className="glass rounded-[24px]">
+            <div className="glass relative rounded-[24px]">
+              {slash.menu}
               <label htmlFor="talkback" className="sr-only">
                 Message to {AGENT_NAME[agent]}
               </label>
@@ -353,6 +356,7 @@ export function Workspace({ id, remote, state, onHome, refreshState, onNav, onRu
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => {
+                  if (slash.onKey(e)) return;
                   if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && !onPhone) {
                     e.preventDefault();
                     if (text.trim() && !running) void send(text);
