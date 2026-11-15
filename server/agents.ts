@@ -349,5 +349,6 @@ async function detectNow(): Promise<Record<AgentId, AgentInfo>> {
     claudeIn = undefined;
   }
   // OpenCode's free models need no sign-in.
-  return { claude: v(c, claudeIn), codex: v(x, xa.ok ? /logged in/i.test(xa.out) : undefined), opencode: v(o, true) };
+  // `codex login status` answers on stderr.
+  return { claude: v(c, claudeIn), codex: v(x, xa.ok ? /logged in/i.test(xa.out + xa.err) : undefined), opencode: v(o, true) };
 }
